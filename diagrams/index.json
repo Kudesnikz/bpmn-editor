@@ -1,0 +1,74 @@
+{
+  "diagrams": [
+    {
+      "id": "shop",
+      "name": "Покупка в магазине",
+      "group": "Продажи",
+      "description": "Выбор товара, касса, оплата и проверка на выходе",
+      "path": "diagrams/shop.bpmn"
+    },
+    {
+      "id": "return",
+      "name": "Возврат товара",
+      "group": "Продажи",
+      "description": "Процесс возврата ранее купленного товара",
+      "path": "diagrams/return.bpmn"
+    },
+    {
+      "id": "bio-antimotivation-as-is",
+      "name": "Антимотивация БИО — AS IS",
+      "group": "БИО",
+      "description": "Текущий процесс: баллы начисляются только после модерации, а длительная неактивность не изменяет накопленные баллы и статус",
+      "path": "diagrams/bio-antimotivation-as-is.bpmn"
+    },
+    {
+      "id": "bio-antimotivation-to-be-a",
+      "name": "Антимотивация БИО — TO BE A: сгорание баллов",
+      "group": "БИО",
+      "description": "Вариант A: снижение баллов при длительной неактивности начиная с уровня Энтузиаст с учетом отпусков и больничных из АСУП",
+      "path": "diagrams/bio-antimotivation-to-be-a.bpmn"
+    },
+    {
+      "id": "bio-antimotivation-to-be-b",
+      "name": "Антимотивация БИО — TO BE B: ограниченный Топ",
+      "group": "БИО",
+      "description": "Вариант B: баллы не сгорают, высокий статус определяется попаданием пользователя в ограниченный Топ-N рейтинга",
+      "path": "diagrams/bio-antimotivation-to-be-b.bpmn"
+    },
+    {
+      "id": "bio-antimotivation-to-be-c",
+      "name": "Антимотивация БИО — TO BE C: сезоны",
+      "group": "БИО",
+      "description": "Вариант C: сезонный рейтинг с фиксацией итогов, сохранением исторических достижений и запуском нового рейтингового цикла",
+      "path": "diagrams/bio-antimotivation-to-be-c.bpmn"
+    },
+    {
+      "id": "incident-investigation-as-is",
+      "name": "Расследование происшествий — AS IS",
+      "group": "Промышленная безопасность",
+      "description": "Текущий процесс расследования происшествия: информирование, классификация, комиссия, сбор материалов, расследование, документы и контроль корректирующих мероприятий",
+      "path": "diagrams/incident-investigation-as-is.bpmn"
+    },
+    {
+      "id": "incident-investigation-to-be",
+      "name": "Расследование происшествий с ИИ-помощником — TO BE",
+      "group": "Промышленная безопасность",
+      "description": "Целевой процесс с ИИ-поддержкой: единая точка входа, проверка полноты, анализ причин, аудит документов и контроль эффективности корректирующих мероприятий",
+      "path": "diagrams/incident-investigation-to-be.bpmn"
+    },
+    {
+      "id": "kgmk-culture-assessment-publication",
+      "name": "Магазин проектов — публикация годового замера культуры",
+      "group": "Культура безопасности",
+      "description": "Корпоративный ПБиОТ загружает годовой замер по всем БЕ, система валидирует данные, фиксирует уровни культуры и при работе в eXpress публикует замер через бота",
+      "path": "diagrams/kgmk-culture-assessment-publication.bpmn"
+    },
+    {
+      "id": "kgmk-project-selection-request",
+      "name": "Магазин проектов — выбор и отправка инициатив",
+      "group": "Культура безопасности",
+      "description": "Руководитель ПБиОТ выбирает разрешённые уровнем культуры инициативы в период кампании, формирует заявку и отправляет её через eXpress/бот либо сохраняет в web-demo",
+      "path": "diagrams/kgmk-project-selection-request.bpmn"
+    }
+  ]
+}

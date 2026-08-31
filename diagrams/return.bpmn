@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_Return"
+  targetNamespace="https://example.local/bpmn/return">
+
+  <bpmn:collaboration id="Collaboration_Return">
+    <bpmn:participant id="Participant_Return" name="Магазин" processRef="Process_Return" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_Return" name="Возврат товара" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Return">
+      <bpmn:lane id="Lane_Customer" name="Покупатель">
+        <bpmn:flowNodeRef>Start_Return</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RequestReturn</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ShowReceipt</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Employee" name="Сотрудник магазина">
+        <bpmn:flowNodeRef>Task_InspectItem</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Accepted</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Refund</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Reject</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Refunded</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_Return" name="Нужен возврат">
+      <bpmn:outgoing>Flow_R1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:manualTask id="Task_RequestReturn" name="Обратиться за возвратом">
+      <bpmn:incoming>Flow_R1</bpmn:incoming>
+      <bpmn:outgoing>Flow_R2</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_ShowReceipt" name="Предъявить товар и чек">
+      <bpmn:incoming>Flow_R2</bpmn:incoming>
+      <bpmn:outgoing>Flow_R3</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_InspectItem" name="Проверить товар и чек">
+      <bpmn:incoming>Flow_R3</bpmn:incoming>
+      <bpmn:outgoing>Flow_R4</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:exclusiveGateway id="Gateway_Accepted" name="Возврат одобрен?" default="Flow_R6">
+      <bpmn:incoming>Flow_R4</bpmn:incoming>
+      <bpmn:outgoing>Flow_R5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_R6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:manualTask id="Task_Refund" name="Вернуть деньги">
+      <bpmn:incoming>Flow_R5</bpmn:incoming>
+      <bpmn:outgoing>Flow_R7</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_Reject" name="Отказать в возврате">
+      <bpmn:incoming>Flow_R6</bpmn:incoming>
+      <bpmn:outgoing>Flow_R8</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:endEvent id="End_Refunded" name="Деньги возвращены">
+      <bpmn:incoming>Flow_R7</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="End_Rejected" name="Возврат отклонён">
+      <bpmn:incoming>Flow_R8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_R1" sourceRef="Start_Return" targetRef="Task_RequestReturn" />
+    <bpmn:sequenceFlow id="Flow_R2" sourceRef="Task_RequestReturn" targetRef="Task_ShowReceipt" />
+    <bpmn:sequenceFlow id="Flow_R3" sourceRef="Task_ShowReceipt" targetRef="Task_InspectItem" />
+    <bpmn:sequenceFlow id="Flow_R4" sourceRef="Task_InspectItem" targetRef="Gateway_Accepted" />
+    <bpmn:sequenceFlow id="Flow_R5" name="Да" sourceRef="Gateway_Accepted" targetRef="Task_Refund">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">approved = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_R6" name="Нет" sourceRef="Gateway_Accepted" targetRef="Task_Reject" />
+    <bpmn:sequenceFlow id="Flow_R7" sourceRef="Task_Refund" targetRef="End_Refunded" />
+    <bpmn:sequenceFlow id="Flow_R8" sourceRef="Task_Reject" targetRef="End_Rejected" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Return">
+    <bpmndi:BPMNPlane id="BPMNPlane_Return" bpmnElement="Collaboration_Return">
+      <bpmndi:BPMNShape id="Participant_Return_di" bpmnElement="Participant_Return" isHorizontal="true">
+        <dc:Bounds x="50" y="80" width="1330" height="320" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Customer_di" bpmnElement="Lane_Customer" isHorizontal="true">
+        <dc:Bounds x="80" y="80" width="1300" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Employee_di" bpmnElement="Lane_Employee" isHorizontal="true">
+        <dc:Bounds x="80" y="230" width="1300" height="170" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_Return_di" bpmnElement="Start_Return">
+        <dc:Bounds x="125" y="137" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RequestReturn_di" bpmnElement="Task_RequestReturn">
+        <dc:Bounds x="210" y="115" width="145" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ShowReceipt_di" bpmnElement="Task_ShowReceipt">
+        <dc:Bounds x="400" y="115" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_InspectItem_di" bpmnElement="Task_InspectItem">
+        <dc:Bounds x="600" y="270" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Accepted_di" bpmnElement="Gateway_Accepted" isMarkerVisible="true">
+        <dc:Bounds x="805" y="285" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Refund_di" bpmnElement="Task_Refund">
+        <dc:Bounds x="920" y="245" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reject_di" bpmnElement="Task_Reject">
+        <dc:Bounds x="920" y="330" width="140" height="55" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Refunded_di" bpmnElement="End_Refunded">
+        <dc:Bounds x="1160" y="267" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected_di" bpmnElement="End_Rejected">
+        <dc:Bounds x="1160" y="340" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_R1_di" bpmnElement="Flow_R1">
+        <di:waypoint x="161" y="155" />
+        <di:waypoint x="210" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R2_di" bpmnElement="Flow_R2">
+        <di:waypoint x="355" y="155" />
+        <di:waypoint x="400" y="155" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R3_di" bpmnElement="Flow_R3">
+        <di:waypoint x="550" y="155" />
+        <di:waypoint x="575" y="155" />
+        <di:waypoint x="575" y="310" />
+        <di:waypoint x="600" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R4_di" bpmnElement="Flow_R4">
+        <di:waypoint x="750" y="310" />
+        <di:waypoint x="805" y="310" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R5_di" bpmnElement="Flow_R5">
+        <di:waypoint x="855" y="310" />
+        <di:waypoint x="880" y="310" />
+        <di:waypoint x="880" y="285" />
+        <di:waypoint x="920" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R6_di" bpmnElement="Flow_R6">
+        <di:waypoint x="830" y="335" />
+        <di:waypoint x="830" y="358" />
+        <di:waypoint x="920" y="358" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R7_di" bpmnElement="Flow_R7">
+        <di:waypoint x="1060" y="285" />
+        <di:waypoint x="1160" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_R8_di" bpmnElement="Flow_R8">
+        <di:waypoint x="1060" y="358" />
+        <di:waypoint x="1160" y="358" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

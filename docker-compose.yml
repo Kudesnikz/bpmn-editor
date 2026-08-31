@@ -1,0 +1,22 @@
+services:
+  bpmn-editor:
+    build: .
+    image: bpmn-mcp-editor:local
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATA_DIR: /data/diagrams
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?Set PUBLIC_BASE_URL in .env}
+      WEB_USERNAME: ${WEB_USERNAME:?Set WEB_USERNAME in .env}
+      WEB_PASSWORD: ${WEB_PASSWORD:?Set WEB_PASSWORD in .env}
+      MCP_API_KEY: ${MCP_API_KEY:?Set MCP_API_KEY in .env}
+      MCP_RATE_LIMIT_PER_MINUTE: ${MCP_RATE_LIMIT_PER_MINUTE:-60}
+      MAX_BPMN_BYTES: ${MAX_BPMN_BYTES:-2097152}
+    ports:
+      - "127.0.0.1:${HOST_PORT:-3000}:3000"
+    volumes:
+      - bpmn_diagrams:/data/diagrams
+    stop_grace_period: 15s
+
+volumes:
+  bpmn_diagrams:

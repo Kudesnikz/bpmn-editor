@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_BIO_Antimotivation_TOBE" targetNamespace="https://sergeygalay.github.io/bpmn-editor/bio-antimotivation-to-be">
+  <bpmn:collaboration id="Collaboration_BIO_TOBE">
+    <bpmn:participant id="Participant_User_TOBE" name="Пользователь" />
+    <bpmn:participant id="Participant_BIO_TOBE" name="БИО" processRef="Process_BIO_TOBE" />
+    <bpmn:participant id="Participant_ASUP_TOBE" name="АСУП" />
+    <bpmn:messageFlow id="MessageFlow_UserAction_TOBE" name="Действие пользователя" sourceRef="Participant_User_TOBE" targetRef="StartEvent_UserAction_TOBE" />
+    <bpmn:messageFlow id="MessageFlow_RequestASUP_TOBE" name="Запрос периодов отсутствия" sourceRef="Task_RequestASUP_TOBE" targetRef="Participant_ASUP_TOBE" />
+    <bpmn:messageFlow id="MessageFlow_ASUPResponse_TOBE" name="Отпуска и больничные" sourceRef="Participant_ASUP_TOBE" targetRef="Task_ReceiveASUP_TOBE" />
+    <bpmn:messageFlow id="MessageFlow_NotifyUser_TOBE" name="Причина и размер списания" sourceRef="Task_NotifyUser_TOBE" targetRef="Participant_User_TOBE" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_BIO_TOBE" name="Механизм антимотивации БИО — TO BE" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_BIO_TOBE">
+      <bpmn:lane id="Lane_ActivityControl_TOBE" name="Контроль активности">
+        <bpmn:flowNodeRef>StartEvent_UserAction_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Useful_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecordUseful_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_StopCycle_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Useful_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_NotUseful_TOBE</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Agent_TOBE" name="Агент">
+        <bpmn:flowNodeRef>Task_EvaluateActivity_TOBE</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Antimotivation_TOBE" name="Антимотивация">
+        <bpmn:flowNodeRef>StartEvent_ScheduledCheck_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RequestASUP_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReceiveASUP_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CalcInactivity_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_90Days_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Level_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Due_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CalcDeduction_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_DeductPoints_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecalculateLevel_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_LogDeduction_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyUser_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Negative_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SetIndifferent_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_NoAnti_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Level1_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_NotDue_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_NextCheck_TOBE</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_StopAnti_TOBE</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_UserAction_TOBE" name="Получено действие пользователя"><bpmn:messageEventDefinition id="MessageEventDefinition_UserAction_TOBE" /></bpmn:startEvent>
+    <bpmn:serviceTask id="Task_EvaluateActivity_TOBE" name="Оценить, является ли активность полезной" />
+    <bpmn:exclusiveGateway id="Gateway_Useful_TOBE" name="Активность полезная?" />
+    <bpmn:serviceTask id="Task_RecordUseful_TOBE" name="Зафиксировать дату полезной активности" />
+    <bpmn:serviceTask id="Task_StopCycle_TOBE" name="Остановить текущий цикл антимотивации" />
+    <bpmn:endEvent id="EndEvent_Useful_TOBE" name="Активность учтена" />
+    <bpmn:endEvent id="EndEvent_NotUseful_TOBE" name="Неактивность продолжается" />
+
+    <bpmn:startEvent id="StartEvent_ScheduledCheck_TOBE" name="Плановая проверка неактивности"><bpmn:timerEventDefinition id="TimerEventDefinition_ScheduledCheck_TOBE" /></bpmn:startEvent>
+    <bpmn:sendTask id="Task_RequestASUP_TOBE" name="Запросить данные об отсутствии в АСУП" />
+    <bpmn:receiveTask id="Task_ReceiveASUP_TOBE" name="Получить отпуска и больничные" />
+    <bpmn:serviceTask id="Task_CalcInactivity_TOBE" name="Рассчитать учитываемую неактивность" />
+    <bpmn:exclusiveGateway id="Gateway_90Days_TOBE" name="Неактивность ≥ 90 дней?" />
+    <bpmn:exclusiveGateway id="Gateway_Level_TOBE" name="Уровень ≥ 2?" />
+    <bpmn:exclusiveGateway id="Gateway_Due_TOBE" name="Первое списание или +14 дней учитываемой неактивности?" />
+    <bpmn:serviceTask id="Task_CalcDeduction_TOBE" name="Рассчитать списание: 5 × коэффициент уровня" />
+    <bpmn:serviceTask id="Task_DeductPoints_TOBE" name="Списать баллы" />
+    <bpmn:serviceTask id="Task_RecalculateLevel_TOBE" name="Пересчитать уровень" />
+    <bpmn:serviceTask id="Task_LogDeduction_TOBE" name="Записать причину и историю списания" />
+    <bpmn:sendTask id="Task_NotifyUser_TOBE" name="Уведомить пользователя о списании" />
+    <bpmn:exclusiveGateway id="Gateway_Negative_TOBE" name="Баланс &lt; 0?" />
+    <bpmn:serviceTask id="Task_SetIndifferent_TOBE" name="Установить состояние «Равнодушный»" />
+    <bpmn:endEvent id="EndEvent_NoAnti_TOBE" name="Антимотивация не применяется" />
+    <bpmn:endEvent id="EndEvent_Level1_TOBE" name="Списание не применяется к уровню 1" />
+    <bpmn:endEvent id="EndEvent_NotDue_TOBE" name="Списание пока не требуется" />
+    <bpmn:endEvent id="EndEvent_NextCheck_TOBE" name="Ожидание следующей проверки" />
+    <bpmn:endEvent id="EndEvent_StopAnti_TOBE" name="Антимотивация остановлена" />
+
+    <bpmn:sequenceFlow id="Flow_TOBE_A1" sourceRef="StartEvent_UserAction_TOBE" targetRef="Task_EvaluateActivity_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_A2" sourceRef="Task_EvaluateActivity_TOBE" targetRef="Gateway_Useful_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_A3_YES" name="Да" sourceRef="Gateway_Useful_TOBE" targetRef="Task_RecordUseful_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_A3_NO" name="Нет" sourceRef="Gateway_Useful_TOBE" targetRef="EndEvent_NotUseful_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_A4" sourceRef="Task_RecordUseful_TOBE" targetRef="Task_StopCycle_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_A5" sourceRef="Task_StopCycle_TOBE" targetRef="EndEvent_Useful_TOBE" />
+
+    <bpmn:sequenceFlow id="Flow_TOBE_B1" sourceRef="StartEvent_ScheduledCheck_TOBE" targetRef="Task_RequestASUP_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B2" sourceRef="Task_RequestASUP_TOBE" targetRef="Task_ReceiveASUP_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B3" sourceRef="Task_ReceiveASUP_TOBE" targetRef="Task_CalcInactivity_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B4" sourceRef="Task_CalcInactivity_TOBE" targetRef="Gateway_90Days_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B5_YES" name="Да" sourceRef="Gateway_90Days_TOBE" targetRef="Gateway_Level_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B5_NO" name="Нет" sourceRef="Gateway_90Days_TOBE" targetRef="EndEvent_NoAnti_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B6_YES" name="Да" sourceRef="Gateway_Level_TOBE" targetRef="Gateway_Due_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B6_NO" name="Нет" sourceRef="Gateway_Level_TOBE" targetRef="EndEvent_Level1_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B7_YES" name="Да" sourceRef="Gateway_Due_TOBE" targetRef="Task_CalcDeduction_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B7_NO" name="Нет" sourceRef="Gateway_Due_TOBE" targetRef="EndEvent_NotDue_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B8" sourceRef="Task_CalcDeduction_TOBE" targetRef="Task_DeductPoints_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B9" sourceRef="Task_DeductPoints_TOBE" targetRef="Task_RecalculateLevel_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B10" sourceRef="Task_RecalculateLevel_TOBE" targetRef="Task_LogDeduction_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B11" sourceRef="Task_LogDeduction_TOBE" targetRef="Task_NotifyUser_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B12" sourceRef="Task_NotifyUser_TOBE" targetRef="Gateway_Negative_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B13_YES" name="Да" sourceRef="Gateway_Negative_TOBE" targetRef="Task_SetIndifferent_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B13_NO" name="Нет" sourceRef="Gateway_Negative_TOBE" targetRef="EndEvent_NextCheck_TOBE" />
+    <bpmn:sequenceFlow id="Flow_TOBE_B14" sourceRef="Task_SetIndifferent_TOBE" targetRef="EndEvent_StopAnti_TOBE" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_BIO_TOBE">
+    <bpmndi:BPMNPlane id="BPMNPlane_BIO_TOBE" bpmnElement="Collaboration_BIO_TOBE">
+      <bpmndi:BPMNShape id="Participant_User_TOBE_di" bpmnElement="Participant_User_TOBE" isHorizontal="true"><dc:Bounds x="40" y="40" width="2520" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_BIO_TOBE_di" bpmnElement="Participant_BIO_TOBE" isHorizontal="true"><dc:Bounds x="40" y="150" width="2520" height="610" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_ActivityControl_TOBE_di" bpmnElement="Lane_ActivityControl_TOBE" isHorizontal="true"><dc:Bounds x="70" y="150" width="2490" height="220" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Agent_TOBE_di" bpmnElement="Lane_Agent_TOBE" isHorizontal="true"><dc:Bounds x="70" y="370" width="2490" height="140" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Antimotivation_TOBE_di" bpmnElement="Lane_Antimotivation_TOBE" isHorizontal="true"><dc:Bounds x="70" y="510" width="2490" height="250" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_ASUP_TOBE_di" bpmnElement="Participant_ASUP_TOBE" isHorizontal="true"><dc:Bounds x="40" y="790" width="2520" height="80" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_UserAction_TOBE_di" bpmnElement="StartEvent_UserAction_TOBE"><dc:Bounds x="125" y="242" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="95" y="285" width="105" height="42" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EvaluateActivity_TOBE_di" bpmnElement="Task_EvaluateActivity_TOBE"><dc:Bounds x="245" y="400" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Useful_TOBE_di" bpmnElement="Gateway_Useful_TOBE" isMarkerVisible="true"><dc:Bounds x="520" y="235" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="492" y="292" width="110" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecordUseful_TOBE_di" bpmnElement="Task_RecordUseful_TOBE"><dc:Bounds x="655" y="220" width="185" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_StopCycle_TOBE_di" bpmnElement="Task_StopCycle_TOBE"><dc:Bounds x="920" y="220" width="190" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Useful_TOBE_di" bpmnElement="EndEvent_Useful_TOBE"><dc:Bounds x="1195" y="242" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NotUseful_TOBE_di" bpmnElement="EndEvent_NotUseful_TOBE"><dc:Bounds x="527" y="317" width="36" height="36" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_ScheduledCheck_TOBE_di" bpmnElement="StartEvent_ScheduledCheck_TOBE"><dc:Bounds x="115" y="595" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="85" y="638" width="105" height="42" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RequestASUP_TOBE_di" bpmnElement="Task_RequestASUP_TOBE"><dc:Bounds x="205" y="573" width="155" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReceiveASUP_TOBE_di" bpmnElement="Task_ReceiveASUP_TOBE"><dc:Bounds x="400" y="573" width="155" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CalcInactivity_TOBE_di" bpmnElement="Task_CalcInactivity_TOBE"><dc:Bounds x="595" y="573" width="165" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_90Days_TOBE_di" bpmnElement="Gateway_90Days_TOBE" isMarkerVisible="true"><dc:Bounds x="800" y="588" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="780" y="645" width="100" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Level_TOBE_di" bpmnElement="Gateway_Level_TOBE" isMarkerVisible="true"><dc:Bounds x="930" y="588" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="915" y="645" width="85" height="28" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Due_TOBE_di" bpmnElement="Gateway_Due_TOBE" isMarkerVisible="true"><dc:Bounds x="1060" y="588" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="1020" y="645" width="135" height="42" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CalcDeduction_TOBE_di" bpmnElement="Task_CalcDeduction_TOBE"><dc:Bounds x="1150" y="573" width="175" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_DeductPoints_TOBE_di" bpmnElement="Task_DeductPoints_TOBE"><dc:Bounds x="1365" y="573" width="125" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecalculateLevel_TOBE_di" bpmnElement="Task_RecalculateLevel_TOBE"><dc:Bounds x="1530" y="573" width="135" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LogDeduction_TOBE_di" bpmnElement="Task_LogDeduction_TOBE"><dc:Bounds x="1705" y="573" width="155" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyUser_TOBE_di" bpmnElement="Task_NotifyUser_TOBE"><dc:Bounds x="1900" y="573" width="155" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Negative_TOBE_di" bpmnElement="Gateway_Negative_TOBE" isMarkerVisible="true"><dc:Bounds x="2095" y="588" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SetIndifferent_TOBE_di" bpmnElement="Task_SetIndifferent_TOBE"><dc:Bounds x="2190" y="655" width="175" height="70" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NoAnti_TOBE_di" bpmnElement="EndEvent_NoAnti_TOBE"><dc:Bounds x="807" y="702" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Level1_TOBE_di" bpmnElement="EndEvent_Level1_TOBE"><dc:Bounds x="937" y="702" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NotDue_TOBE_di" bpmnElement="EndEvent_NotDue_TOBE"><dc:Bounds x="1067" y="702" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_NextCheck_TOBE_di" bpmnElement="EndEvent_NextCheck_TOBE"><dc:Bounds x="2200" y="595" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_StopAnti_TOBE_di" bpmnElement="EndEvent_StopAnti_TOBE"><dc:Bounds x="2415" y="672" width="36" height="36" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_TOBE_A1_di" bpmnElement="Flow_TOBE_A1"><di:waypoint x="143" y="278" /><di:waypoint x="143" y="440" /><di:waypoint x="245" y="440" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_A2_di" bpmnElement="Flow_TOBE_A2"><di:waypoint x="435" y="440" /><di:waypoint x="545" y="440" /><di:waypoint x="545" y="285" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_A3_YES_di" bpmnElement="Flow_TOBE_A3_YES"><di:waypoint x="570" y="260" /><di:waypoint x="655" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_A3_NO_di" bpmnElement="Flow_TOBE_A3_NO"><di:waypoint x="545" y="285" /><di:waypoint x="545" y="317" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_A4_di" bpmnElement="Flow_TOBE_A4"><di:waypoint x="840" y="260" /><di:waypoint x="920" y="260" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_A5_di" bpmnElement="Flow_TOBE_A5"><di:waypoint x="1110" y="260" /><di:waypoint x="1195" y="260" /></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Flow_TOBE_B1_di" bpmnElement="Flow_TOBE_B1"><di:waypoint x="151" y="613" /><di:waypoint x="205" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B2_di" bpmnElement="Flow_TOBE_B2"><di:waypoint x="360" y="613" /><di:waypoint x="400" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B3_di" bpmnElement="Flow_TOBE_B3"><di:waypoint x="555" y="613" /><di:waypoint x="595" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B4_di" bpmnElement="Flow_TOBE_B4"><di:waypoint x="760" y="613" /><di:waypoint x="800" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B5_YES_di" bpmnElement="Flow_TOBE_B5_YES"><di:waypoint x="850" y="613" /><di:waypoint x="930" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B5_NO_di" bpmnElement="Flow_TOBE_B5_NO"><di:waypoint x="825" y="638" /><di:waypoint x="825" y="702" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B6_YES_di" bpmnElement="Flow_TOBE_B6_YES"><di:waypoint x="980" y="613" /><di:waypoint x="1060" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B6_NO_di" bpmnElement="Flow_TOBE_B6_NO"><di:waypoint x="955" y="638" /><di:waypoint x="955" y="702" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B7_YES_di" bpmnElement="Flow_TOBE_B7_YES"><di:waypoint x="1110" y="613" /><di:waypoint x="1150" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B7_NO_di" bpmnElement="Flow_TOBE_B7_NO"><di:waypoint x="1085" y="638" /><di:waypoint x="1085" y="702" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B8_di" bpmnElement="Flow_TOBE_B8"><di:waypoint x="1325" y="613" /><di:waypoint x="1365" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B9_di" bpmnElement="Flow_TOBE_B9"><di:waypoint x="1490" y="613" /><di:waypoint x="1530" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B10_di" bpmnElement="Flow_TOBE_B10"><di:waypoint x="1665" y="613" /><di:waypoint x="1705" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B11_di" bpmnElement="Flow_TOBE_B11"><di:waypoint x="1860" y="613" /><di:waypoint x="1900" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B12_di" bpmnElement="Flow_TOBE_B12"><di:waypoint x="2055" y="613" /><di:waypoint x="2095" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B13_YES_di" bpmnElement="Flow_TOBE_B13_YES"><di:waypoint x="2120" y="638" /><di:waypoint x="2120" y="690" /><di:waypoint x="2190" y="690" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B13_NO_di" bpmnElement="Flow_TOBE_B13_NO"><di:waypoint x="2145" y="613" /><di:waypoint x="2200" y="613" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_B14_di" bpmnElement="Flow_TOBE_B14"><di:waypoint x="2365" y="690" /><di:waypoint x="2415" y="690" /></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="MessageFlow_UserAction_TOBE_di" bpmnElement="MessageFlow_UserAction_TOBE"><di:waypoint x="143" y="120" /><di:waypoint x="143" y="242" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_RequestASUP_TOBE_di" bpmnElement="MessageFlow_RequestASUP_TOBE"><di:waypoint x="282" y="653" /><di:waypoint x="282" y="790" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_ASUPResponse_TOBE_di" bpmnElement="MessageFlow_ASUPResponse_TOBE"><di:waypoint x="477" y="790" /><di:waypoint x="477" y="653" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MessageFlow_NotifyUser_TOBE_di" bpmnElement="MessageFlow_NotifyUser_TOBE"><di:waypoint x="1977" y="573" /><di:waypoint x="1977" y="120" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

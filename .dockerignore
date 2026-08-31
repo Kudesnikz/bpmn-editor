@@ -1,0 +1,16 @@
+.git
+.github
+node_modules
+dist
+.env
+.env.*
+!.env.example
+.data
+coverage
+*.log
+.gitignore
+README.md
+AGENTS.md
+diagrams/*
+!diagrams/shop.bpmn
+!diagrams/return.bpmn

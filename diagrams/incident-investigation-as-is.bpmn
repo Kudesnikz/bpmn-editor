@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_Incident_ASIS" targetNamespace="https://sergeygalay.github.io/bpmn-editor/incident-investigation-as-is">
+  <bpmn:collaboration id="Collaboration_Incident_ASIS">
+    <bpmn:participant id="Participant_Company_ASIS" name="Компания" processRef="Process_Incident_ASIS" />
+    <bpmn:participant id="Participant_Med_ASIS" name="Медицинская организация" />
+    <bpmn:participant id="Participant_Gov_ASIS" name="Государственные / надзорные органы" />
+    <bpmn:messageFlow id="Message_ASIS_MedHelp" name="Медицинская помощь / первичные данные" sourceRef="Task_Report_ASIS" targetRef="Participant_Med_ASIS" />
+    <bpmn:messageFlow id="Message_ASIS_315U" name="315У / уточнение категории" sourceRef="Participant_Med_ASIS" targetRef="Task_Classify_ASIS" />
+    <bpmn:messageFlow id="Message_ASIS_NotifyGov" name="Первичное уведомление" sourceRef="Task_Notify_ASIS" targetRef="Participant_Gov_ASIS" />
+    <bpmn:messageFlow id="Message_ASIS_DocsGov" name="Комплект документов" sourceRef="Task_SendDocs_ASIS" targetRef="Participant_Gov_ASIS" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Incident_ASIS" name="Расследование происшествия — AS IS" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Incident_ASIS">
+      <bpmn:lane id="Lane_Employee_ASIS" name="Сотрудник / мастер / диспетчер">
+        <bpmn:flowNodeRef>StartEvent_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Report_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_PBIOT_ASIS" name="ПБиОТ / расследователь">
+        <bpmn:flowNodeRef>Task_Classify_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Notify_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Notify_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_NotifyMerge_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Commission_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Collect_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CollectAdditional_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Approve_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SendDocs_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Control_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Commission_ASIS" name="Комиссия / профильные эксперты">
+        <bpmn:flowNodeRef>Gateway_InvestigationMerge_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Investigate_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_InvestigationEnough_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_DocMerge_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Docs_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Sign_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_DocsApproved_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReworkDocs_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Actions_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Leadership_ASIS" name="Руководство / ответственные за КД">
+        <bpmn:flowNodeRef>Task_Execute_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_ASIS" name="Происшествие" />
+    <bpmn:userTask id="Task_Report_ASIS" name="Сообщить &#10;мастеру / диспетчеру и организовать первичное реагирование" />
+    <bpmn:userTask id="Task_Classify_ASIS" name="Уточнить факты &#10;и классифицировать; при поступлении 315У пересмотреть при необходимости" />
+    <bpmn:exclusiveGateway id="Gateway_Notify_ASIS" name="Нужно уведомить внешние органы?" />
+    <bpmn:sendTask id="Task_Notify_ASIS" name="Уведомить предусмотренные государственные органы" />
+    <bpmn:exclusiveGateway id="Gateway_NotifyMerge_ASIS" />
+    <bpmn:userTask id="Task_Commission_ASIS" name="Сформировать комиссию" />
+    <bpmn:manualTask id="Task_Collect_ASIS" name="Собрать первичные материалы на месте" />
+    <bpmn:exclusiveGateway id="Gateway_InvestigationMerge_ASIS" />
+    <bpmn:userTask id="Task_Investigate_ASIS" name="Провести осмотр, опросы и анализ материалов" />
+    <bpmn:exclusiveGateway id="Gateway_InvestigationEnough_ASIS" name="Материалов и выводов достаточно?" />
+    <bpmn:manualTask id="Task_CollectAdditional_ASIS" name="Дособрать материалы / уточнения" />
+    <bpmn:exclusiveGateway id="Gateway_DocMerge_ASIS" />
+    <bpmn:manualTask id="Task_Docs_ASIS" name="Вручную подготовить Форму 5 / Н-1 / внутренний акт" />
+    <bpmn:manualTask id="Task_Sign_ASIS" name="Предварительно согласовать, собрать подписи и комплекты документов" />
+    <bpmn:exclusiveGateway id="Gateway_DocsApproved_ASIS" name="Документы согласованы?" />
+    <bpmn:userTask id="Task_ReworkDocs_ASIS" name="Доработать документы / устранить замечания" />
+    <bpmn:userTask id="Task_Approve_ASIS" name="Утвердить акт и ознакомить пострадавшего" />
+    <bpmn:sendTask id="Task_SendDocs_ASIS" name="Направить документы в органы / архив" />
+    <bpmn:userTask id="Task_Actions_ASIS" name="Сформировать корректирующие мероприятия" />
+    <bpmn:userTask id="Task_Execute_ASIS" name="Исполнить корректирующие мероприятия" />
+    <bpmn:userTask id="Task_Control_ASIS" name="Контролировать выполнение КД" />
+    <bpmn:endEvent id="EndEvent_ASIS" name="Завершено" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F01" sourceRef="StartEvent_ASIS" targetRef="Task_Report_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F02" sourceRef="Task_Report_ASIS" targetRef="Task_Classify_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F03" sourceRef="Task_Classify_ASIS" targetRef="Gateway_Notify_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F04" name="Да" sourceRef="Gateway_Notify_ASIS" targetRef="Task_Notify_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F05" sourceRef="Task_Notify_ASIS" targetRef="Gateway_NotifyMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F06" name="Нет" sourceRef="Gateway_Notify_ASIS" targetRef="Gateway_NotifyMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F07" sourceRef="Gateway_NotifyMerge_ASIS" targetRef="Task_Commission_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F08" sourceRef="Task_Commission_ASIS" targetRef="Task_Collect_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F09" sourceRef="Task_Collect_ASIS" targetRef="Gateway_InvestigationMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F10" sourceRef="Gateway_InvestigationMerge_ASIS" targetRef="Task_Investigate_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F11" sourceRef="Task_Investigate_ASIS" targetRef="Gateway_InvestigationEnough_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F12" name="Нет" sourceRef="Gateway_InvestigationEnough_ASIS" targetRef="Task_CollectAdditional_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F13" sourceRef="Task_CollectAdditional_ASIS" targetRef="Gateway_InvestigationMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F14" name="Да" sourceRef="Gateway_InvestigationEnough_ASIS" targetRef="Gateway_DocMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F15" sourceRef="Gateway_DocMerge_ASIS" targetRef="Task_Docs_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F16" sourceRef="Task_Docs_ASIS" targetRef="Task_Sign_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F17" sourceRef="Task_Sign_ASIS" targetRef="Gateway_DocsApproved_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F18" name="Нет" sourceRef="Gateway_DocsApproved_ASIS" targetRef="Task_ReworkDocs_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F19" sourceRef="Task_ReworkDocs_ASIS" targetRef="Gateway_DocMerge_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F20" name="Да" sourceRef="Gateway_DocsApproved_ASIS" targetRef="Task_Approve_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F21" sourceRef="Task_Approve_ASIS" targetRef="Task_SendDocs_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F22" sourceRef="Task_SendDocs_ASIS" targetRef="Task_Actions_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F23" sourceRef="Task_Actions_ASIS" targetRef="Task_Execute_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F24" sourceRef="Task_Execute_ASIS" targetRef="Task_Control_ASIS" />
+    <bpmn:sequenceFlow id="Flow_ASIS_F25" sourceRef="Task_Control_ASIS" targetRef="EndEvent_ASIS" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="D_Incident_ASIS">
+    <bpmndi:BPMNPlane id="P_Incident_ASIS" bpmnElement="Collaboration_Incident_ASIS">
+      <bpmndi:BPMNShape id="Participant_Company_ASIS_di" bpmnElement="Participant_Company_ASIS" isHorizontal="true">
+        <dc:Bounds x="20" y="40" width="4500" height="720" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Leadership_ASIS_di" bpmnElement="Lane_Leadership_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="580" width="4420" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Commission_ASIS_di" bpmnElement="Lane_Commission_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="400" width="4420" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_PBIOT_ASIS_di" bpmnElement="Lane_PBIOT_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="220" width="4420" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Employee_ASIS_di" bpmnElement="Lane_Employee_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="40" width="4420" height="180" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_ASIS_di" bpmnElement="StartEvent_ASIS">
+        <dc:Bounds x="100" y="112" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Report_ASIS_di" bpmnElement="Task_Report_ASIS">
+        <dc:Bounds x="190" y="95" width="210" height="70" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Classify_ASIS_di" bpmnElement="Task_Classify_ASIS">
+        <dc:Bounds x="450" y="265" width="230" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Notify_ASIS_di" bpmnElement="Gateway_Notify_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="730" y="280" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="728" y="233" width="55" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Notify_ASIS_di" bpmnElement="Task_Notify_ASIS">
+        <dc:Bounds x="840" y="265" width="210" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_NotifyMerge_ASIS_di" bpmnElement="Gateway_NotifyMerge_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="1100" y="280" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Commission_ASIS_di" bpmnElement="Task_Commission_ASIS">
+        <dc:Bounds x="1200" y="265" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Collect_ASIS_di" bpmnElement="Task_Collect_ASIS">
+        <dc:Bounds x="1430" y="265" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_InvestigationMerge_ASIS_di" bpmnElement="Gateway_InvestigationMerge_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="1660" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Investigate_ASIS_di" bpmnElement="Task_Investigate_ASIS">
+        <dc:Bounds x="1760" y="445" width="220" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_InvestigationEnough_ASIS_di" bpmnElement="Gateway_InvestigationEnough_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="2030" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CollectAdditional_ASIS_di" bpmnElement="Task_CollectAdditional_ASIS">
+        <dc:Bounds x="2130" y="265" width="190" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DocMerge_ASIS_di" bpmnElement="Gateway_DocMerge_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="2140" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Docs_ASIS_di" bpmnElement="Task_Docs_ASIS">
+        <dc:Bounds x="2240" y="445" width="220" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Sign_ASIS_di" bpmnElement="Task_Sign_ASIS">
+        <dc:Bounds x="2510" y="445" width="230" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DocsApproved_ASIS_di" bpmnElement="Gateway_DocsApproved_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="2790" y="465" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReworkDocs_ASIS_di" bpmnElement="Task_ReworkDocs_ASIS">
+        <dc:Bounds x="2900" y="445" width="210" height="90" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Approve_ASIS_di" bpmnElement="Task_Approve_ASIS">
+        <dc:Bounds x="3160" y="265" width="210" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendDocs_ASIS_di" bpmnElement="Task_SendDocs_ASIS">
+        <dc:Bounds x="3420" y="265" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Actions_ASIS_di" bpmnElement="Task_Actions_ASIS">
+        <dc:Bounds x="3670" y="445" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Execute_ASIS_di" bpmnElement="Task_Execute_ASIS">
+        <dc:Bounds x="3920" y="625" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Control_ASIS_di" bpmnElement="Task_Control_ASIS">
+        <dc:Bounds x="4170" y="265" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ASIS_di" bpmnElement="EndEvent_ASIS">
+        <dc:Bounds x="4400" y="287" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F01_di" bpmnElement="Flow_ASIS_F01">
+        <di:waypoint x="136" y="130" />
+        <di:waypoint x="190" y="130" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F02_di" bpmnElement="Flow_ASIS_F02">
+        <di:waypoint x="400" y="130" />
+        <di:waypoint x="450" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F03_di" bpmnElement="Flow_ASIS_F03">
+        <di:waypoint x="680" y="305" />
+        <di:waypoint x="730" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F04_di" bpmnElement="Flow_ASIS_F04">
+        <di:waypoint x="780" y="305" />
+        <di:waypoint x="840" y="305" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="783" y="293" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F05_di" bpmnElement="Flow_ASIS_F05">
+        <di:waypoint x="1050" y="305" />
+        <di:waypoint x="1100" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F06_di" bpmnElement="Flow_ASIS_F06">
+        <di:waypoint x="755" y="330" />
+        <di:waypoint x="755" y="370" />
+        <di:waypoint x="1125" y="370" />
+        <di:waypoint x="1125" y="330" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="760" y="353" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F07_di" bpmnElement="Flow_ASIS_F07">
+        <di:waypoint x="1150" y="305" />
+        <di:waypoint x="1200" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F08_di" bpmnElement="Flow_ASIS_F08">
+        <di:waypoint x="1380" y="305" />
+        <di:waypoint x="1430" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F09_di" bpmnElement="Flow_ASIS_F09">
+        <di:waypoint x="1610" y="305" />
+        <di:waypoint x="1660" y="305" />
+        <di:waypoint x="1660" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F10_di" bpmnElement="Flow_ASIS_F10">
+        <di:waypoint x="1710" y="490" />
+        <di:waypoint x="1760" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F11_di" bpmnElement="Flow_ASIS_F11">
+        <di:waypoint x="1980" y="490" />
+        <di:waypoint x="2030" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F12_di" bpmnElement="Flow_ASIS_F12">
+        <di:waypoint x="2055" y="465" />
+        <di:waypoint x="2055" y="305" />
+        <di:waypoint x="2130" y="305" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2061" y="443" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F13_di" bpmnElement="Flow_ASIS_F13">
+        <di:waypoint x="2225" y="265" />
+        <di:waypoint x="2225" y="235" />
+        <di:waypoint x="1685" y="235" />
+        <di:waypoint x="1685" y="465" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F14_di" bpmnElement="Flow_ASIS_F14">
+        <di:waypoint x="2080" y="490" />
+        <di:waypoint x="2140" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2083" y="473" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F15_di" bpmnElement="Flow_ASIS_F15">
+        <di:waypoint x="2190" y="490" />
+        <di:waypoint x="2240" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F16_di" bpmnElement="Flow_ASIS_F16">
+        <di:waypoint x="2460" y="490" />
+        <di:waypoint x="2510" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F17_di" bpmnElement="Flow_ASIS_F17">
+        <di:waypoint x="2740" y="490" />
+        <di:waypoint x="2790" y="490" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F18_di" bpmnElement="Flow_ASIS_F18">
+        <di:waypoint x="2840" y="490" />
+        <di:waypoint x="2900" y="490" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2861" y="473" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F19_di" bpmnElement="Flow_ASIS_F19">
+        <di:waypoint x="3005" y="445" />
+        <di:waypoint x="3005" y="405" />
+        <di:waypoint x="2165" y="405" />
+        <di:waypoint x="2165" y="465" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F20_di" bpmnElement="Flow_ASIS_F20">
+        <di:waypoint x="2815" y="465" />
+        <di:waypoint x="2815" y="305" />
+        <di:waypoint x="3160" y="305" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="2823" y="443" width="17" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F21_di" bpmnElement="Flow_ASIS_F21">
+        <di:waypoint x="3370" y="305" />
+        <di:waypoint x="3420" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F22_di" bpmnElement="Flow_ASIS_F22">
+        <di:waypoint x="3620" y="305" />
+        <di:waypoint x="3670" y="485" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F23_di" bpmnElement="Flow_ASIS_F23">
+        <di:waypoint x="3870" y="485" />
+        <di:waypoint x="3920" y="665" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F24_di" bpmnElement="Flow_ASIS_F24">
+        <di:waypoint x="4120" y="665" />
+        <di:waypoint x="4170" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ASIS_F25_di" bpmnElement="Flow_ASIS_F25">
+        <di:waypoint x="4350" y="305" />
+        <di:waypoint x="4400" y="305" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Participant_Med_ASIS_di" bpmnElement="Participant_Med_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="800" width="4420" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_Gov_ASIS_di" bpmnElement="Participant_Gov_ASIS" isHorizontal="true">
+        <dc:Bounds x="50" y="910" width="4420" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Message_ASIS_MedHelp_di" bpmnElement="Message_ASIS_MedHelp">
+        <di:waypoint x="295" y="165" />
+        <di:waypoint x="295" y="800" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="225" y="193" width="69" height="53" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_ASIS_315U_di" bpmnElement="Message_ASIS_315U">
+        <di:waypoint x="565" y="800" />
+        <di:waypoint x="565" y="345" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="476" y="386" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_ASIS_NotifyGov_di" bpmnElement="Message_ASIS_NotifyGov">
+        <di:waypoint x="945" y="345" />
+        <di:waypoint x="945" y="910" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="875" y="386" width="69" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_ASIS_DocsGov_di" bpmnElement="Message_ASIS_DocsGov">
+        <di:waypoint x="3520" y="345" />
+        <di:waypoint x="3520" y="910" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="3450" y="386" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

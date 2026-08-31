@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+ xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+ xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+ xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+ id="Definitions_BIO_TOBE_C" targetNamespace="https://sergeygalay.github.io/bpmn-editor/bio-antimotivation-to-be-c">
+  <bpmn:collaboration id="Collab_TOBE_C">
+    <bpmn:participant id="Participant_User_C" name="Пользователь" />
+    <bpmn:participant id="Participant_BIO_C" name="БИО" processRef="Process_BIO_C" />
+    <bpmn:messageFlow id="MF_Submit_C" name="Зарегистрированная опасность" sourceRef="Participant_User_C" targetRef="Start_Submit_C" />
+    <bpmn:messageFlow id="MF_NotifySeason_C" name="Итоги сезона / новый сезон" sourceRef="Task_NotifySeason_C" targetRef="Participant_User_C" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_BIO_C" name="TO BE C — Сезонная модель" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_C">
+      <bpmn:lane id="Lane_Moderation_C" name="Модерация">
+        <bpmn:flowNodeRef>Start_Submit_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Moderate_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Accepted_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Reject_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected_C</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Season_C" name="Сезонная геймификация">
+        <bpmn:flowNodeRef>Task_AwardSeason_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecalcSeason_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Activity_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Start_SeasonEnd_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_FixResults_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_CreateBadge_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Archive_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Reset_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifySeason_C</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_NewSeason_C</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="Start_Submit_C" name="Опасность зарегистрирована"><bpmn:messageEventDefinition id="MED_Submit_C"/></bpmn:startEvent>
+    <bpmn:userTask id="Task_Moderate_C" name="Проверить опасность"/>
+    <bpmn:exclusiveGateway id="Gw_Accepted_C" name="Опасность подтверждена?"/>
+    <bpmn:serviceTask id="Task_Reject_C" name="Отклонить заявку"/>
+    <bpmn:endEvent id="End_Rejected_C" name="Баллы не начислены"/>
+    <bpmn:serviceTask id="Task_AwardSeason_C" name="Начислить баллы текущего сезона"/>
+    <bpmn:serviceTask id="Task_RecalcSeason_C" name="Пересчитать сезонный статус и рейтинг"/>
+    <bpmn:endEvent id="End_Activity_C" name="Сезонный прогресс обновлен"/>
+
+    <bpmn:startEvent id="Start_SeasonEnd_C" name="Завершение сезона"><bpmn:timerEventDefinition id="TED_SeasonEnd_C"/></bpmn:startEvent>
+    <bpmn:serviceTask id="Task_FixResults_C" name="Зафиксировать итоги сезона"/>
+    <bpmn:serviceTask id="Task_CreateBadge_C" name="Создать исторический бейдж / достижение"/>
+    <bpmn:serviceTask id="Task_Archive_C" name="Сохранить историю сезона"/>
+    <bpmn:serviceTask id="Task_Reset_C" name="Начать новый рейтинговый цикл"/>
+    <bpmn:sendTask id="Task_NotifySeason_C" name="Показать итог и правила нового сезона"/>
+    <bpmn:endEvent id="End_NewSeason_C" name="Новый сезон начат"/>
+
+    <bpmn:sequenceFlow id="F_C_1" sourceRef="Start_Submit_C" targetRef="Task_Moderate_C"/>
+    <bpmn:sequenceFlow id="F_C_2" sourceRef="Task_Moderate_C" targetRef="Gw_Accepted_C"/>
+    <bpmn:sequenceFlow id="F_C_3N" name="Нет" sourceRef="Gw_Accepted_C" targetRef="Task_Reject_C"/>
+    <bpmn:sequenceFlow id="F_C_4N" sourceRef="Task_Reject_C" targetRef="End_Rejected_C"/>
+    <bpmn:sequenceFlow id="F_C_3Y" name="Да" sourceRef="Gw_Accepted_C" targetRef="Task_AwardSeason_C"/>
+    <bpmn:sequenceFlow id="F_C_4Y" sourceRef="Task_AwardSeason_C" targetRef="Task_RecalcSeason_C"/>
+    <bpmn:sequenceFlow id="F_C_5Y" sourceRef="Task_RecalcSeason_C" targetRef="End_Activity_C"/>
+
+    <bpmn:sequenceFlow id="F_C_10" sourceRef="Start_SeasonEnd_C" targetRef="Task_FixResults_C"/>
+    <bpmn:sequenceFlow id="F_C_11" sourceRef="Task_FixResults_C" targetRef="Task_CreateBadge_C"/>
+    <bpmn:sequenceFlow id="F_C_12" sourceRef="Task_CreateBadge_C" targetRef="Task_Archive_C"/>
+    <bpmn:sequenceFlow id="F_C_13" sourceRef="Task_Archive_C" targetRef="Task_Reset_C"/>
+    <bpmn:sequenceFlow id="F_C_14" sourceRef="Task_Reset_C" targetRef="Task_NotifySeason_C"/>
+    <bpmn:sequenceFlow id="F_C_15" sourceRef="Task_NotifySeason_C" targetRef="End_NewSeason_C"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="Diagram_C">
+    <bpmndi:BPMNPlane id="Plane_C" bpmnElement="Collab_TOBE_C">
+      <bpmndi:BPMNShape id="Participant_User_C_di" bpmnElement="Participant_User_C" isHorizontal="true"><dc:Bounds x="40" y="30" width="2100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_BIO_C_di" bpmnElement="Participant_BIO_C" isHorizontal="true"><dc:Bounds x="40" y="140" width="2100" height="430"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Moderation_C_di" bpmnElement="Lane_Moderation_C" isHorizontal="true"><dc:Bounds x="70" y="140" width="2070" height="190"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Season_C_di" bpmnElement="Lane_Season_C" isHorizontal="true"><dc:Bounds x="70" y="330" width="2070" height="240"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_Submit_C_di" bpmnElement="Start_Submit_C"><dc:Bounds x="120" y="215" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Moderate_C_di" bpmnElement="Task_Moderate_C"><dc:Bounds x="220" y="190" width="150" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Accepted_C_di" bpmnElement="Gw_Accepted_C" isMarkerVisible="true"><dc:Bounds x="445" y="205" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reject_C_di" bpmnElement="Task_Reject_C"><dc:Bounds x="575" y="165" width="140" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected_C_di" bpmnElement="End_Rejected_C"><dc:Bounds x="790" y="182" width="36" height="36"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_AwardSeason_C_di" bpmnElement="Task_AwardSeason_C"><dc:Bounds x="575" y="365" width="185" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecalcSeason_C_di" bpmnElement="Task_RecalcSeason_C"><dc:Bounds x="835" y="365" width="205" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Activity_C_di" bpmnElement="End_Activity_C"><dc:Bounds x="1115" y="382" width="36" height="36"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Start_SeasonEnd_C_di" bpmnElement="Start_SeasonEnd_C"><dc:Bounds x="120" y="495" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FixResults_C_di" bpmnElement="Task_FixResults_C"><dc:Bounds x="220" y="470" width="170" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateBadge_C_di" bpmnElement="Task_CreateBadge_C"><dc:Bounds x="465" y="465" width="195" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Archive_C_di" bpmnElement="Task_Archive_C"><dc:Bounds x="735" y="470" width="165" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reset_C_di" bpmnElement="Task_Reset_C"><dc:Bounds x="975" y="470" width="185" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifySeason_C_di" bpmnElement="Task_NotifySeason_C"><dc:Bounds x="1235" y="465" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_NewSeason_C_di" bpmnElement="End_NewSeason_C"><dc:Bounds x="1520" y="487" width="36" height="36"/></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="F_C_1_di" bpmnElement="F_C_1"><di:waypoint x="156" y="233"/><di:waypoint x="220" y="230"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_2_di" bpmnElement="F_C_2"><di:waypoint x="370" y="230"/><di:waypoint x="445" y="230"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_3N_di" bpmnElement="F_C_3N"><di:waypoint x="470" y="205"/><di:waypoint x="470" y="200"/><di:waypoint x="575" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_4N_di" bpmnElement="F_C_4N"><di:waypoint x="715" y="200"/><di:waypoint x="790" y="200"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_3Y_di" bpmnElement="F_C_3Y"><di:waypoint x="470" y="255"/><di:waypoint x="470" y="400"/><di:waypoint x="575" y="400"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_4Y_di" bpmnElement="F_C_4Y"><di:waypoint x="760" y="400"/><di:waypoint x="835" y="400"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_5Y_di" bpmnElement="F_C_5Y"><di:waypoint x="1040" y="400"/><di:waypoint x="1115" y="400"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="F_C_10_di" bpmnElement="F_C_10"><di:waypoint x="156" y="513"/><di:waypoint x="220" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_11_di" bpmnElement="F_C_11"><di:waypoint x="390" y="505"/><di:waypoint x="465" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_12_di" bpmnElement="F_C_12"><di:waypoint x="660" y="505"/><di:waypoint x="735" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_13_di" bpmnElement="F_C_13"><di:waypoint x="900" y="505"/><di:waypoint x="975" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_14_di" bpmnElement="F_C_14"><di:waypoint x="1160" y="505"/><di:waypoint x="1235" y="505"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_C_15_di" bpmnElement="F_C_15"><di:waypoint x="1445" y="505"/><di:waypoint x="1520" y="505"/></bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="MF_Submit_C_di" bpmnElement="MF_Submit_C"><di:waypoint x="138" y="110"/><di:waypoint x="138" y="215"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_NotifySeason_C_di" bpmnElement="MF_NotifySeason_C"><di:waypoint x="1340" y="465"/><di:waypoint x="1340" y="110"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

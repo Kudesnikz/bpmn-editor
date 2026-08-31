@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_KGMK_ProjectSelection" targetNamespace="https://sergeygalay.github.io/bpmn-editor/kgmk-project-selection-request">
+  <bpmn:collaboration id="Collaboration_ProjectSelection">
+    <bpmn:participant id="Participant_StoreB" name="Магазин проектов" processRef="Process_ProjectSelection"/>
+    <bpmn:participant id="Participant_BotB" name="eXpress / бот"/>
+    <bpmn:messageFlow id="Message_RequestToBot" name="submit_project_request" sourceRef="Task_SendBot" targetRef="Participant_BotB"/>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_ProjectSelection" name="Выбор и отправка инициатив на внедрение" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_B">
+      <bpmn:lane id="Lane_Manager" name="Руководитель ПБиОТ площадки">
+        <bpmn:flowNodeRef>Start_Select</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Browse</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Add</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_More</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Review</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Submit</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_System" name="Магазин проектов / система">
+        <bpmn:flowNodeRef>Task_Context</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_CanSelect</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_ViewOnly</bpmn:flowNodeRef><bpmn:flowNodeRef>End_View</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Catalog</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Allowed</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Reject</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_NotEmpty</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Revalidate</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Remain</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Block</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Express</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_SendBot</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_BotOK</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_MarkSent</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_LocalFallback</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_WebSave</bpmn:flowNodeRef><bpmn:flowNodeRef>End_Request</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Select" name="Пользователь открыл магазин"/>
+    <bpmn:serviceTask id="Task_Context" name="Определить профиль, роль, площадку, закреплённый контур и состояние кампании"/>
+    <bpmn:exclusiveGateway id="Gateway_CanSelect" name="Руководитель ПБиОТ, площадка в контуре и окно открыто?"/>
+    <bpmn:serviceTask id="Task_ViewOnly" name="Включить режим просмотра и показать причину"/>
+    <bpmn:endEvent id="End_View" name="Выбор недоступен"/>
+    <bpmn:serviceTask id="Task_Catalog" name="Получить уровень площадки и сформировать каталог: текущий уровень + следующий шаг"/>
+    <bpmn:userTask id="Task_Browse" name="Просмотреть каталог, поиск, категории и карточки инициатив"/>
+    <bpmn:userTask id="Task_Add" name="Выбрать инициативу и добавить в текущую заявку"/>
+    <bpmn:exclusiveGateway id="Gateway_Allowed" name="Инициатива разрешена уровнем?"/>
+    <bpmn:serviceTask id="Task_Reject" name="Не добавлять инициативу и показать сообщение"/>
+    <bpmn:exclusiveGateway id="Gateway_More" name="Добавить ещё инициативы?"/>
+    <bpmn:userTask id="Task_Review" name="Открыть «Мои заявки», проверить состав и при необходимости удалить инициативы"/>
+    <bpmn:userTask id="Task_Submit" name="Нажать «Отправить заявку на внедрение»"/>
+    <bpmn:exclusiveGateway id="Gateway_NotEmpty" name="Заявка непустая?"/>
+    <bpmn:serviceTask id="Task_Revalidate" name="Повторно проверить инициативы по разрешённому набору"/>
+    <bpmn:exclusiveGateway id="Gateway_Remain" name="После проверки есть разрешённые инициативы?"/>
+    <bpmn:serviceTask id="Task_Block" name="Блокировать отправку и показать причину"/>
+    <bpmn:exclusiveGateway id="Gateway_Express" name="Работа внутри eXpress?"/>
+    <bpmn:serviceTask id="Task_SendBot" name="Передать заявку в бот"/>
+    <bpmn:exclusiveGateway id="Gateway_BotOK" name="Бот ответил успешно?"/>
+    <bpmn:serviceTask id="Task_MarkSent" name="Перенести инициативы в отправленные и очистить текущую заявку"/>
+    <bpmn:serviceTask id="Task_LocalFallback" name="Сохранить локально, очистить заявку и сообщить, что бот не ответил"/>
+    <bpmn:serviceTask id="Task_WebSave" name="Сохранить заявку локально в web-demo и очистить текущую заявку"/>
+    <bpmn:endEvent id="End_Request" name="Заявка зафиксирована"/>
+    <bpmn:sequenceFlow id="F01" sourceRef="Start_Select" targetRef="Task_Context"/>
+    <bpmn:sequenceFlow id="F02" sourceRef="Task_Context" targetRef="Gateway_CanSelect"/>
+    <bpmn:sequenceFlow id="F03" name="Да" sourceRef="Gateway_CanSelect" targetRef="Task_Catalog"/>
+    <bpmn:sequenceFlow id="F04" name="Нет" sourceRef="Gateway_CanSelect" targetRef="Task_ViewOnly"/>
+    <bpmn:sequenceFlow id="F05" sourceRef="Task_ViewOnly" targetRef="End_View"/>
+    <bpmn:sequenceFlow id="F06" sourceRef="Task_Catalog" targetRef="Task_Browse"/>
+    <bpmn:sequenceFlow id="F07" sourceRef="Task_Browse" targetRef="Task_Add"/>
+    <bpmn:sequenceFlow id="F08" sourceRef="Task_Add" targetRef="Gateway_Allowed"/>
+    <bpmn:sequenceFlow id="F09" name="Да" sourceRef="Gateway_Allowed" targetRef="Gateway_More"/>
+    <bpmn:sequenceFlow id="F10" name="Нет" sourceRef="Gateway_Allowed" targetRef="Task_Reject"/>
+    <bpmn:sequenceFlow id="F11" sourceRef="Task_Reject" targetRef="Task_Browse"/>
+    <bpmn:sequenceFlow id="F12" name="Да" sourceRef="Gateway_More" targetRef="Task_Browse"/>
+    <bpmn:sequenceFlow id="F13" name="Нет" sourceRef="Gateway_More" targetRef="Task_Review"/>
+    <bpmn:sequenceFlow id="F14" sourceRef="Task_Review" targetRef="Task_Submit"/>
+    <bpmn:sequenceFlow id="F15" sourceRef="Task_Submit" targetRef="Gateway_NotEmpty"/>
+    <bpmn:sequenceFlow id="F16" name="Да" sourceRef="Gateway_NotEmpty" targetRef="Task_Revalidate"/>
+    <bpmn:sequenceFlow id="F17" name="Нет" sourceRef="Gateway_NotEmpty" targetRef="Task_Block"/>
+    <bpmn:sequenceFlow id="F18" sourceRef="Task_Revalidate" targetRef="Gateway_Remain"/>
+    <bpmn:sequenceFlow id="F19" name="Да" sourceRef="Gateway_Remain" targetRef="Gateway_Express"/>
+    <bpmn:sequenceFlow id="F20" name="Нет" sourceRef="Gateway_Remain" targetRef="Task_Block"/>
+    <bpmn:sequenceFlow id="F21" sourceRef="Task_Block" targetRef="Task_Review"/>
+    <bpmn:sequenceFlow id="F22" name="Да" sourceRef="Gateway_Express" targetRef="Task_SendBot"/>
+    <bpmn:sequenceFlow id="F23" name="Нет" sourceRef="Gateway_Express" targetRef="Task_WebSave"/>
+    <bpmn:sequenceFlow id="F24" sourceRef="Task_SendBot" targetRef="Gateway_BotOK"/>
+    <bpmn:sequenceFlow id="F25" name="Да" sourceRef="Gateway_BotOK" targetRef="Task_MarkSent"/>
+    <bpmn:sequenceFlow id="F26" name="Нет" sourceRef="Gateway_BotOK" targetRef="Task_LocalFallback"/>
+    <bpmn:sequenceFlow id="F27" sourceRef="Task_MarkSent" targetRef="End_Request"/>
+    <bpmn:sequenceFlow id="F28" sourceRef="Task_LocalFallback" targetRef="End_Request"/>
+    <bpmn:sequenceFlow id="F29" sourceRef="Task_WebSave" targetRef="End_Request"/>
+    <bpmn:textAnnotation id="Annotation_Fallback"><bpmn:text>Прототип показывает локально сохранённые инициативы как «Отправлено». Целевой статус, retry и дедупликация требуют согласования.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Fallback" sourceRef="Task_LocalFallback" targetRef="Annotation_Fallback"/>
+    <bpmn:textAnnotation id="Annotation_Window"><bpmn:text>В наблюдаемой конфигурации прототипа окно кампании: 01.09.2026–30.09.2026 (МСК). Даты являются конфигурацией.</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Window" sourceRef="Gateway_CanSelect" targetRef="Annotation_Window"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_ProjectSelection">
+    <bpmndi:BPMNPlane id="Plane_ProjectSelection" bpmnElement="Collaboration_ProjectSelection">
+      <bpmndi:BPMNShape id="Participant_StoreB_di" bpmnElement="Participant_StoreB" isHorizontal="true"><dc:Bounds x="30" y="40" width="3700" height="430"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Manager_di" bpmnElement="Lane_Manager" isHorizontal="true"><dc:Bounds x="60" y="40" width="3670" height="180"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_System_di" bpmnElement="Lane_System" isHorizontal="true"><dc:Bounds x="60" y="220" width="3670" height="250"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_BotB_di" bpmnElement="Participant_BotB" isHorizontal="true"><dc:Bounds x="2890" y="540" width="540" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Select_di" bpmnElement="Start_Select"><dc:Bounds x="100" y="110" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Context_di" bpmnElement="Task_Context"><dc:Bounds x="180" y="275" width="220" height="100"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CanSelect_di" bpmnElement="Gateway_CanSelect" isMarkerVisible="true"><dc:Bounds x="450" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ViewOnly_di" bpmnElement="Task_ViewOnly"><dc:Bounds x="560" y="385" width="210" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_View_di" bpmnElement="End_View"><dc:Bounds x="820" y="402" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Catalog_di" bpmnElement="Task_Catalog"><dc:Bounds x="560" y="270" width="250" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Browse_di" bpmnElement="Task_Browse"><dc:Bounds x="860" y="80" width="230" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Add_di" bpmnElement="Task_Add"><dc:Bounds x="1140" y="85" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Allowed_di" bpmnElement="Gateway_Allowed" isMarkerVisible="true"><dc:Bounds x="1400" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reject_di" bpmnElement="Task_Reject"><dc:Bounds x="1510" y="375" width="210" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_More_di" bpmnElement="Gateway_More" isMarkerVisible="true"><dc:Bounds x="1510" y="105" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Review_di" bpmnElement="Task_Review"><dc:Bounds x="1790" y="70" width="260" height="110"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Submit_di" bpmnElement="Task_Submit"><dc:Bounds x="2100" y="85" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_NotEmpty_di" bpmnElement="Gateway_NotEmpty" isMarkerVisible="true"><dc:Bounds x="2370" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Revalidate_di" bpmnElement="Task_Revalidate"><dc:Bounds x="2480" y="270" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Remain_di" bpmnElement="Gateway_Remain" isMarkerVisible="true"><dc:Bounds x="2750" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Block_di" bpmnElement="Task_Block"><dc:Bounds x="2480" y="380" width="220" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Express_di" bpmnElement="Gateway_Express" isMarkerVisible="true"><dc:Bounds x="2870" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendBot_di" bpmnElement="Task_SendBot"><dc:Bounds x="2980" y="270" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_BotOK_di" bpmnElement="Gateway_BotOK" isMarkerVisible="true"><dc:Bounds x="3220" y="300" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_MarkSent_di" bpmnElement="Task_MarkSent"><dc:Bounds x="3330" y="245" width="240" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_LocalFallback_di" bpmnElement="Task_LocalFallback"><dc:Bounds x="3330" y="355" width="250" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_WebSave_di" bpmnElement="Task_WebSave"><dc:Bounds x="2980" y="380" width="210" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Request_di" bpmnElement="End_Request"><dc:Bounds x="3640" y="302" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_Fallback_di" bpmnElement="Annotation_Fallback"><dc:Bounds x="3150" y="655" width="520" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Annotation_Window_di" bpmnElement="Annotation_Window"><dc:Bounds x="380" y="520" width="500" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F01_di" bpmnElement="F01"><di:waypoint x="136" y="128"/><di:waypoint x="160" y="128"/><di:waypoint x="160" y="325"/><di:waypoint x="180" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F02_di" bpmnElement="F02"><di:waypoint x="400" y="325"/><di:waypoint x="450" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F03_di" bpmnElement="F03"><di:waypoint x="500" y="325"/><di:waypoint x="560" y="315"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F04_di" bpmnElement="F04"><di:waypoint x="475" y="350"/><di:waypoint x="475" y="420"/><di:waypoint x="560" y="420"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F05_di" bpmnElement="F05"><di:waypoint x="770" y="420"/><di:waypoint x="820" y="420"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F06_di" bpmnElement="F06"><di:waypoint x="810" y="315"/><di:waypoint x="835" y="315"/><di:waypoint x="835" y="125"/><di:waypoint x="860" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F07_di" bpmnElement="F07"><di:waypoint x="1090" y="125"/><di:waypoint x="1140" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F08_di" bpmnElement="F08"><di:waypoint x="1350" y="125"/><di:waypoint x="1375" y="125"/><di:waypoint x="1375" y="325"/><di:waypoint x="1400" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F09_di" bpmnElement="F09"><di:waypoint x="1450" y="325"/><di:waypoint x="1480" y="325"/><di:waypoint x="1480" y="130"/><di:waypoint x="1510" y="130"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F10_di" bpmnElement="F10"><di:waypoint x="1450" y="325"/><di:waypoint x="1480" y="325"/><di:waypoint x="1480" y="410"/><di:waypoint x="1510" y="410"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F11_di" bpmnElement="F11"><di:waypoint x="1720" y="410"/><di:waypoint x="1740" y="410"/><di:waypoint x="1740" y="55"/><di:waypoint x="840" y="55"/><di:waypoint x="840" y="125"/><di:waypoint x="860" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F12_di" bpmnElement="F12"><di:waypoint x="1560" y="130"/><di:waypoint x="1580" y="130"/><di:waypoint x="1580" y="55"/><di:waypoint x="840" y="55"/><di:waypoint x="840" y="125"/><di:waypoint x="860" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F13_di" bpmnElement="F13"><di:waypoint x="1560" y="130"/><di:waypoint x="1790" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F14_di" bpmnElement="F14"><di:waypoint x="2050" y="125"/><di:waypoint x="2100" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F15_di" bpmnElement="F15"><di:waypoint x="2320" y="125"/><di:waypoint x="2345" y="125"/><di:waypoint x="2345" y="325"/><di:waypoint x="2370" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F16_di" bpmnElement="F16"><di:waypoint x="2420" y="325"/><di:waypoint x="2480" y="310"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F17_di" bpmnElement="F17"><di:waypoint x="2395" y="350"/><di:waypoint x="2395" y="415"/><di:waypoint x="2480" y="415"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F18_di" bpmnElement="F18"><di:waypoint x="2700" y="310"/><di:waypoint x="2725" y="310"/><di:waypoint x="2725" y="325"/><di:waypoint x="2750" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F19_di" bpmnElement="F19"><di:waypoint x="2800" y="325"/><di:waypoint x="2870" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F20_di" bpmnElement="F20"><di:waypoint x="2775" y="350"/><di:waypoint x="2775" y="460"/><di:waypoint x="2460" y="460"/><di:waypoint x="2460" y="415"/><di:waypoint x="2480" y="415"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F21_di" bpmnElement="F21"><di:waypoint x="2700" y="415"/><di:waypoint x="2720" y="415"/><di:waypoint x="2720" y="55"/><di:waypoint x="1770" y="55"/><di:waypoint x="1770" y="125"/><di:waypoint x="1790" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F22_di" bpmnElement="F22"><di:waypoint x="2920" y="325"/><di:waypoint x="2980" y="310"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F23_di" bpmnElement="F23"><di:waypoint x="2895" y="350"/><di:waypoint x="2895" y="415"/><di:waypoint x="2980" y="415"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F24_di" bpmnElement="F24"><di:waypoint x="3170" y="310"/><di:waypoint x="3220" y="325"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F25_di" bpmnElement="F25"><di:waypoint x="3270" y="325"/><di:waypoint x="3300" y="325"/><di:waypoint x="3300" y="290"/><di:waypoint x="3330" y="290"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F26_di" bpmnElement="F26"><di:waypoint x="3270" y="325"/><di:waypoint x="3300" y="325"/><di:waypoint x="3300" y="400"/><di:waypoint x="3330" y="400"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F27_di" bpmnElement="F27"><di:waypoint x="3570" y="290"/><di:waypoint x="3600" y="290"/><di:waypoint x="3600" y="320"/><di:waypoint x="3640" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F28_di" bpmnElement="F28"><di:waypoint x="3580" y="400"/><di:waypoint x="3600" y="400"/><di:waypoint x="3600" y="320"/><di:waypoint x="3640" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F29_di" bpmnElement="F29"><di:waypoint x="3190" y="415"/><di:waypoint x="3210" y="415"/><di:waypoint x="3210" y="320"/><di:waypoint x="3640" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_RequestToBot_di" bpmnElement="Message_RequestToBot"><di:waypoint x="3075" y="350"/><di:waypoint x="3075" y="540"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Fallback_di" bpmnElement="Assoc_Fallback"><di:waypoint x="3455" y="445"/><di:waypoint x="3455" y="655"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Assoc_Window_di" bpmnElement="Assoc_Window"><di:waypoint x="475" y="350"/><di:waypoint x="475" y="520"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

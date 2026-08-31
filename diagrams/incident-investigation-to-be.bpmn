@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_Incident_TOBE" targetNamespace="https://sergeygalay.github.io/bpmn-editor/incident-investigation-to-be">
+  <bpmn:collaboration id="Collaboration_Incident_TOBE">
+    <bpmn:participant id="Participant_Company_TOBE" name="Компания" processRef="Process_Incident_TOBE"/>
+    <bpmn:participant id="Participant_Med_TOBE" name="Медицинская организация"/>
+    <bpmn:participant id="Participant_Gov_TOBE" name="Государственные / надзорные органы"/>
+    <bpmn:messageFlow id="Message_TOBE_MedHelp" name="Медицинская помощь / первичные данные" sourceRef="Task_Report_TOBE" targetRef="Participant_Med_TOBE"/>
+    <bpmn:messageFlow id="Message_TOBE_315U" name="315У / уточнение категории" sourceRef="Participant_Med_TOBE" targetRef="Task_Classify_TOBE"/>
+    <bpmn:messageFlow id="Message_TOBE_NotifyGov" name="Обязательное уведомление" sourceRef="Task_Notify_TOBE" targetRef="Participant_Gov_TOBE"/>
+    <bpmn:messageFlow id="Message_TOBE_DocsGov" name="Электронный комплект документов" sourceRef="Task_Send_TOBE" targetRef="Participant_Gov_TOBE"/>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_Incident_TOBE" name="Расследование происшествия с ИИ-помощником — TO BE" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Incident_TOBE">
+      <bpmn:lane id="Lane_Employee_TOBE" name="Сотрудник / мастер / диспетчер"><bpmn:flowNodeRef>StartEvent_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Report_TOBE</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_PBIOT_TOBE" name="ПБиОТ / расследователь"><bpmn:flowNodeRef>Task_Classify_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Notify_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_NotifyMerge_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Collect_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Missing_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Additional_TOBE</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_Commission_TOBE" name="Комиссия / профильные эксперты"><bpmn:flowNodeRef>Task_ConfirmCommission_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Interview_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Root_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Cause_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Agree_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Review_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Docs_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Rework_TOBE</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_AI_TOBE" name="ИИ-помощник / корпоративные системы"><bpmn:flowNodeRef>Task_Card_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Notify_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RecommendCommission_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_DataMerge_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Check_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Enough_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Questions_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Analyze_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Actions_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Draft_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_DocMerge_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Audit_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Send_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_RegisterKDMerge_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_RegisterKD_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_ControlMerge_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Monitor_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Done_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Remind_TOBE</bpmn:flowNodeRef></bpmn:lane>
+      <bpmn:lane id="Lane_Leadership_TOBE" name="Руководство / ответственные за КД"><bpmn:flowNodeRef>Task_ExecuteKD_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Effect_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Gateway_Effective_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>Task_Adjust_TOBE</bpmn:flowNodeRef><bpmn:flowNodeRef>EndEvent_TOBE</bpmn:flowNodeRef></bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent_TOBE" name="Происшествие"/>
+    <bpmn:userTask id="Task_Report_TOBE" name="Сообщить через единую точку входа и организовать первичное реагирование"/>
+    <bpmn:serviceTask id="Task_Card_TOBE" name="Создать карточку, черновик уведомления / «Молнии» и предложить классификацию"/>
+    <bpmn:userTask id="Task_Classify_TOBE" name="Подтвердить / при необходимости пересмотреть классификацию"/>
+    <bpmn:exclusiveGateway id="Gateway_Notify_TOBE" name="Нужно уведомить внешние органы?"/>
+    <bpmn:serviceTask id="Task_Notify_TOBE" name="Сформировать и направить обязательное уведомление"/>
+    <bpmn:exclusiveGateway id="Gateway_NotifyMerge_TOBE" name="XOR merge"/>
+    <bpmn:serviceTask id="Task_RecommendCommission_TOBE" name="Рекомендовать состав комиссии"/>
+    <bpmn:userTask id="Task_ConfirmCommission_TOBE" name="Подтвердить состав комиссии и роли"/>
+    <bpmn:manualTask id="Task_Collect_TOBE" name="Собрать материалы по чек-листу"/>
+    <bpmn:exclusiveGateway id="Gateway_DataMerge_TOBE" name="XOR merge"/>
+    <bpmn:serviceTask id="Task_Check_TOBE" name="Проверить полноту материалов и выявить пробелы"/>
+    <bpmn:exclusiveGateway id="Gateway_Enough_TOBE" name="Материалов достаточно?"/>
+    <bpmn:manualTask id="Task_Missing_TOBE" name="Дособрать недостающие материалы"/>
+    <bpmn:serviceTask id="Task_Questions_TOBE" name="Сформировать вопросы для интервью"/>
+    <bpmn:userTask id="Task_Interview_TOBE" name="Провести осмотр и интервью участников"/>
+    <bpmn:serviceTask id="Task_Analyze_TOBE" name="Транскрибировать, выявить противоречия, восстановить цепочку событий и гипотезы причины"/>
+    <bpmn:userTask id="Task_Root_TOBE" name="Проверить и подтвердить коренную причину"/>
+    <bpmn:exclusiveGateway id="Gateway_Cause_TOBE" name="Причина обоснована?"/>
+    <bpmn:userTask id="Task_Additional_TOBE" name="Назначить дополнительный сбор материалов"/>
+    <bpmn:serviceTask id="Task_Actions_TOBE" name="Предложить КД и проверить связь каждого мероприятия с причиной"/>
+    <bpmn:userTask id="Task_Agree_TOBE" name="Согласовать КД, ответственных и сроки"/>
+    <bpmn:serviceTask id="Task_Draft_TOBE" name="Сформировать черновики Формы 5 / Н-1 / внутреннего акта"/>
+    <bpmn:exclusiveGateway id="Gateway_DocMerge_TOBE" name="XOR merge"/>
+    <bpmn:serviceTask id="Task_Audit_TOBE" name="Валидировать документы: пропуски, искажения и противоречия первичным материалам"/>
+    <bpmn:userTask id="Task_Review_TOBE" name="Проверить, согласовать и подписать документы по действующим требованиям"/>
+    <bpmn:exclusiveGateway id="Gateway_Docs_TOBE" name="Документы согласованы?"/>
+    <bpmn:userTask id="Task_Rework_TOBE" name="Доработать документы"/>
+    <bpmn:serviceTask id="Task_Send_TOBE" name="При необходимости направить электронный комплект в предусмотренные органы"/>
+    <bpmn:exclusiveGateway id="Gateway_RegisterKDMerge_TOBE" name="XOR merge"/>
+    <bpmn:serviceTask id="Task_RegisterKD_TOBE" name="Поставить КД на контроль в системе"/>
+    <bpmn:userTask id="Task_ExecuteKD_TOBE" name="Выполнить корректирующее действие"/>
+    <bpmn:exclusiveGateway id="Gateway_ControlMerge_TOBE" name="XOR merge"/>
+    <bpmn:serviceTask id="Task_Monitor_TOBE" name="Контролировать статус и срок КД"/>
+    <bpmn:exclusiveGateway id="Gateway_Done_TOBE" name="КД выполнено?"/>
+    <bpmn:serviceTask id="Task_Remind_TOBE" name="Зафиксировать просрочку / напомнить и продолжить контроль"/>
+    <bpmn:userTask id="Task_Effect_TOBE" name="Проверить эффективность КД / провести аудит"/>
+    <bpmn:exclusiveGateway id="Gateway_Effective_TOBE" name="КД эффективно?"/>
+    <bpmn:userTask id="Task_Adjust_TOBE" name="Скорректировать КД"/>
+    <bpmn:endEvent id="EndEvent_TOBE" name="Завершено"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_01" sourceRef="StartEvent_TOBE" targetRef="Task_Report_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_02" sourceRef="Task_Report_TOBE" targetRef="Task_Card_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_03" sourceRef="Task_Card_TOBE" targetRef="Task_Classify_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_04" sourceRef="Task_Classify_TOBE" targetRef="Gateway_Notify_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_05" name="Да" sourceRef="Gateway_Notify_TOBE" targetRef="Task_Notify_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_06" sourceRef="Task_Notify_TOBE" targetRef="Gateway_NotifyMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_07" name="Нет" sourceRef="Gateway_Notify_TOBE" targetRef="Gateway_NotifyMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_08" sourceRef="Gateway_NotifyMerge_TOBE" targetRef="Task_RecommendCommission_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_09" sourceRef="Task_RecommendCommission_TOBE" targetRef="Task_ConfirmCommission_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_10" sourceRef="Task_ConfirmCommission_TOBE" targetRef="Task_Collect_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_11" sourceRef="Task_Collect_TOBE" targetRef="Gateway_DataMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_12" sourceRef="Gateway_DataMerge_TOBE" targetRef="Task_Check_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_13" sourceRef="Task_Check_TOBE" targetRef="Gateway_Enough_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_14" name="Нет" sourceRef="Gateway_Enough_TOBE" targetRef="Task_Missing_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_15" sourceRef="Task_Missing_TOBE" targetRef="Gateway_DataMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_16" name="Да" sourceRef="Gateway_Enough_TOBE" targetRef="Task_Questions_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_17" sourceRef="Task_Questions_TOBE" targetRef="Task_Interview_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_18" sourceRef="Task_Interview_TOBE" targetRef="Task_Analyze_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_19" sourceRef="Task_Analyze_TOBE" targetRef="Task_Root_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_20" sourceRef="Task_Root_TOBE" targetRef="Gateway_Cause_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_21" name="Нет" sourceRef="Gateway_Cause_TOBE" targetRef="Task_Additional_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_22" sourceRef="Task_Additional_TOBE" targetRef="Gateway_DataMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_23" name="Да" sourceRef="Gateway_Cause_TOBE" targetRef="Task_Actions_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_24" sourceRef="Task_Actions_TOBE" targetRef="Task_Agree_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_25" sourceRef="Task_Agree_TOBE" targetRef="Task_Draft_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_26" sourceRef="Task_Draft_TOBE" targetRef="Gateway_DocMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_27" sourceRef="Gateway_DocMerge_TOBE" targetRef="Task_Audit_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_28" sourceRef="Task_Audit_TOBE" targetRef="Task_Review_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_29" sourceRef="Task_Review_TOBE" targetRef="Gateway_Docs_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_30" name="Нет" sourceRef="Gateway_Docs_TOBE" targetRef="Task_Rework_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_31" sourceRef="Task_Rework_TOBE" targetRef="Gateway_DocMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_32" name="Да" sourceRef="Gateway_Docs_TOBE" targetRef="Task_Send_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_33" sourceRef="Task_Send_TOBE" targetRef="Gateway_RegisterKDMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_33A" sourceRef="Gateway_RegisterKDMerge_TOBE" targetRef="Task_RegisterKD_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_34" sourceRef="Task_RegisterKD_TOBE" targetRef="Task_ExecuteKD_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_35" sourceRef="Task_ExecuteKD_TOBE" targetRef="Gateway_ControlMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_36" sourceRef="Gateway_ControlMerge_TOBE" targetRef="Task_Monitor_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_37" sourceRef="Task_Monitor_TOBE" targetRef="Gateway_Done_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_38" name="Нет" sourceRef="Gateway_Done_TOBE" targetRef="Task_Remind_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_39" sourceRef="Task_Remind_TOBE" targetRef="Gateway_ControlMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_40" name="Да" sourceRef="Gateway_Done_TOBE" targetRef="Task_Effect_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_41" sourceRef="Task_Effect_TOBE" targetRef="Gateway_Effective_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_42" name="Нет" sourceRef="Gateway_Effective_TOBE" targetRef="Task_Adjust_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_43" sourceRef="Task_Adjust_TOBE" targetRef="Gateway_RegisterKDMerge_TOBE"/>
+    <bpmn:sequenceFlow id="Flow_TOBE_44" name="Да" sourceRef="Gateway_Effective_TOBE" targetRef="EndEvent_TOBE"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="D_Incident_TOBE">
+    <bpmndi:BPMNPlane id="P_Incident_TOBE" bpmnElement="Collaboration_Incident_TOBE">
+      <bpmndi:BPMNShape id="Participant_Company_TOBE_di" bpmnElement="Participant_Company_TOBE" isHorizontal="true"><dc:Bounds x="40" y="40" width="7700" height="850"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Employee_TOBE_di" bpmnElement="Lane_Employee_TOBE" isHorizontal="true"><dc:Bounds x="70" y="40" width="7620" height="170"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_PBIOT_TOBE_di" bpmnElement="Lane_PBIOT_TOBE" isHorizontal="true"><dc:Bounds x="70" y="210" width="7620" height="170"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Commission_TOBE_di" bpmnElement="Lane_Commission_TOBE" isHorizontal="true"><dc:Bounds x="70" y="380" width="7620" height="170"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_AI_TOBE_di" bpmnElement="Lane_AI_TOBE" isHorizontal="true"><dc:Bounds x="70" y="550" width="7620" height="170"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Leadership_TOBE_di" bpmnElement="Lane_Leadership_TOBE" isHorizontal="true"><dc:Bounds x="70" y="720" width="7620" height="170"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_Med_TOBE_di" bpmnElement="Participant_Med_TOBE" isHorizontal="true"><dc:Bounds x="70" y="930" width="7620" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_Gov_TOBE_di" bpmnElement="Participant_Gov_TOBE" isHorizontal="true"><dc:Bounds x="70" y="1040" width="7620" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="StartEvent_TOBE_di" bpmnElement="StartEvent_TOBE"><dc:Bounds x="100" y="107" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Report_TOBE_di" bpmnElement="Task_Report_TOBE"><dc:Bounds x="190" y="90" width="210" height="70"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Card_TOBE_di" bpmnElement="Task_Card_TOBE"><dc:Bounds x="450" y="590" width="240" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Classify_TOBE_di" bpmnElement="Task_Classify_TOBE"><dc:Bounds x="740" y="255" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Notify_TOBE_di" bpmnElement="Gateway_Notify_TOBE" isMarkerVisible="true"><dc:Bounds x="1010" y="270" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Notify_TOBE_di" bpmnElement="Task_Notify_TOBE"><dc:Bounds x="1130" y="590" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_NotifyMerge_TOBE_di" bpmnElement="Gateway_NotifyMerge_TOBE" isMarkerVisible="true"><dc:Bounds x="1400" y="270" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecommendCommission_TOBE_di" bpmnElement="Task_RecommendCommission_TOBE"><dc:Bounds x="1510" y="590" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ConfirmCommission_TOBE_di" bpmnElement="Task_ConfirmCommission_TOBE"><dc:Bounds x="1750" y="425" width="200" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Collect_TOBE_di" bpmnElement="Task_Collect_TOBE"><dc:Bounds x="2000" y="255" width="180" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DataMerge_TOBE_di" bpmnElement="Gateway_DataMerge_TOBE" isMarkerVisible="true"><dc:Bounds x="2230" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Check_TOBE_di" bpmnElement="Task_Check_TOBE"><dc:Bounds x="2340" y="590" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Enough_TOBE_di" bpmnElement="Gateway_Enough_TOBE" isMarkerVisible="true"><dc:Bounds x="2610" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Missing_TOBE_di" bpmnElement="Task_Missing_TOBE"><dc:Bounds x="2730" y="255" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Questions_TOBE_di" bpmnElement="Task_Questions_TOBE"><dc:Bounds x="2730" y="590" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Interview_TOBE_di" bpmnElement="Task_Interview_TOBE"><dc:Bounds x="2970" y="425" width="200" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Analyze_TOBE_di" bpmnElement="Task_Analyze_TOBE"><dc:Bounds x="3220" y="580" width="260" height="100"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Root_TOBE_di" bpmnElement="Task_Root_TOBE"><dc:Bounds x="3530" y="425" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Cause_TOBE_di" bpmnElement="Gateway_Cause_TOBE" isMarkerVisible="true"><dc:Bounds x="3790" y="440" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Additional_TOBE_di" bpmnElement="Task_Additional_TOBE"><dc:Bounds x="3910" y="255" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Actions_TOBE_di" bpmnElement="Task_Actions_TOBE"><dc:Bounds x="3910" y="585" width="240" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Agree_TOBE_di" bpmnElement="Task_Agree_TOBE"><dc:Bounds x="4200" y="425" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Draft_TOBE_di" bpmnElement="Task_Draft_TOBE"><dc:Bounds x="4460" y="590" width="230" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_DocMerge_TOBE_di" bpmnElement="Gateway_DocMerge_TOBE" isMarkerVisible="true"><dc:Bounds x="4740" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Audit_TOBE_di" bpmnElement="Task_Audit_TOBE"><dc:Bounds x="4850" y="580" width="250" height="100"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Review_TOBE_di" bpmnElement="Task_Review_TOBE"><dc:Bounds x="5150" y="420" width="250" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Docs_TOBE_di" bpmnElement="Gateway_Docs_TOBE" isMarkerVisible="true"><dc:Bounds x="5450" y="440" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Rework_TOBE_di" bpmnElement="Task_Rework_TOBE"><dc:Bounds x="5560" y="420" width="170" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Send_TOBE_di" bpmnElement="Task_Send_TOBE"><dc:Bounds x="5560" y="585" width="240" height="90"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_RegisterKDMerge_TOBE_di" bpmnElement="Gateway_RegisterKDMerge_TOBE" isMarkerVisible="true"><dc:Bounds x="5850" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RegisterKD_TOBE_di" bpmnElement="Task_RegisterKD_TOBE"><dc:Bounds x="5960" y="590" width="180" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExecuteKD_TOBE_di" bpmnElement="Task_ExecuteKD_TOBE"><dc:Bounds x="6190" y="760" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ControlMerge_TOBE_di" bpmnElement="Gateway_ControlMerge_TOBE" isMarkerVisible="true"><dc:Bounds x="6430" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Monitor_TOBE_di" bpmnElement="Task_Monitor_TOBE"><dc:Bounds x="6540" y="590" width="190" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Done_TOBE_di" bpmnElement="Gateway_Done_TOBE" isMarkerVisible="true"><dc:Bounds x="6780" y="605" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Remind_TOBE_di" bpmnElement="Task_Remind_TOBE"><dc:Bounds x="6890" y="590" width="210" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Effect_TOBE_di" bpmnElement="Task_Effect_TOBE"><dc:Bounds x="6890" y="760" width="220" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Effective_TOBE_di" bpmnElement="Gateway_Effective_TOBE" isMarkerVisible="true"><dc:Bounds x="7160" y="775" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Adjust_TOBE_di" bpmnElement="Task_Adjust_TOBE"><dc:Bounds x="7270" y="760" width="160" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_TOBE_di" bpmnElement="EndEvent_TOBE"><dc:Bounds x="7500" y="782" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_TOBE_01_di" bpmnElement="Flow_TOBE_01"><di:waypoint x="136" y="125"/><di:waypoint x="190" y="125"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_02_di" bpmnElement="Flow_TOBE_02"><di:waypoint x="400" y="125"/><di:waypoint x="450" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_03_di" bpmnElement="Flow_TOBE_03"><di:waypoint x="690" y="630"/><di:waypoint x="740" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_04_di" bpmnElement="Flow_TOBE_04"><di:waypoint x="960" y="295"/><di:waypoint x="1010" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_05_di" bpmnElement="Flow_TOBE_05"><di:waypoint x="1035" y="320"/><di:waypoint x="1035" y="630"/><di:waypoint x="1130" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_06_di" bpmnElement="Flow_TOBE_06"><di:waypoint x="1350" y="630"/><di:waypoint x="1425" y="630"/><di:waypoint x="1425" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_07_di" bpmnElement="Flow_TOBE_07"><di:waypoint x="1060" y="295"/><di:waypoint x="1400" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_08_di" bpmnElement="Flow_TOBE_08"><di:waypoint x="1450" y="295"/><di:waypoint x="1510" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_09_di" bpmnElement="Flow_TOBE_09"><di:waypoint x="1700" y="630"/><di:waypoint x="1750" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_10_di" bpmnElement="Flow_TOBE_10"><di:waypoint x="1950" y="465"/><di:waypoint x="2000" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_11_di" bpmnElement="Flow_TOBE_11"><di:waypoint x="2180" y="295"/><di:waypoint x="2230" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_12_di" bpmnElement="Flow_TOBE_12"><di:waypoint x="2280" y="630"/><di:waypoint x="2340" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_13_di" bpmnElement="Flow_TOBE_13"><di:waypoint x="2560" y="630"/><di:waypoint x="2610" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_14_di" bpmnElement="Flow_TOBE_14"><di:waypoint x="2660" y="630"/><di:waypoint x="2730" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_15_di" bpmnElement="Flow_TOBE_15"><di:waypoint x="2825" y="255"/><di:waypoint x="2825" y="230"/><di:waypoint x="2255" y="230"/><di:waypoint x="2255" y="605"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_16_di" bpmnElement="Flow_TOBE_16"><di:waypoint x="2660" y="630"/><di:waypoint x="2730" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_17_di" bpmnElement="Flow_TOBE_17"><di:waypoint x="2920" y="630"/><di:waypoint x="2970" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_18_di" bpmnElement="Flow_TOBE_18"><di:waypoint x="3170" y="465"/><di:waypoint x="3220" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_19_di" bpmnElement="Flow_TOBE_19"><di:waypoint x="3480" y="630"/><di:waypoint x="3530" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_20_di" bpmnElement="Flow_TOBE_20"><di:waypoint x="3740" y="465"/><di:waypoint x="3790" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_21_di" bpmnElement="Flow_TOBE_21"><di:waypoint x="3840" y="465"/><di:waypoint x="3910" y="295"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_22_di" bpmnElement="Flow_TOBE_22"><di:waypoint x="4015" y="255"/><di:waypoint x="4015" y="200"/><di:waypoint x="2255" y="200"/><di:waypoint x="2255" y="605"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_23_di" bpmnElement="Flow_TOBE_23"><di:waypoint x="3840" y="465"/><di:waypoint x="3910" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_24_di" bpmnElement="Flow_TOBE_24"><di:waypoint x="4150" y="630"/><di:waypoint x="4200" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_25_di" bpmnElement="Flow_TOBE_25"><di:waypoint x="4410" y="465"/><di:waypoint x="4460" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_26_di" bpmnElement="Flow_TOBE_26"><di:waypoint x="4690" y="630"/><di:waypoint x="4740" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_27_di" bpmnElement="Flow_TOBE_27"><di:waypoint x="4790" y="630"/><di:waypoint x="4850" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_28_di" bpmnElement="Flow_TOBE_28"><di:waypoint x="5100" y="630"/><di:waypoint x="5150" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_29_di" bpmnElement="Flow_TOBE_29"><di:waypoint x="5400" y="465"/><di:waypoint x="5450" y="465"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_30_di" bpmnElement="Flow_TOBE_30"><di:waypoint x="5500" y="465"/><di:waypoint x="5560" y="460"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_31_di" bpmnElement="Flow_TOBE_31"><di:waypoint x="5645" y="420"/><di:waypoint x="5645" y="395"/><di:waypoint x="4765" y="395"/><di:waypoint x="4765" y="605"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_32_di" bpmnElement="Flow_TOBE_32"><di:waypoint x="5500" y="465"/><di:waypoint x="5560" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_33_di" bpmnElement="Flow_TOBE_33"><di:waypoint x="5800" y="630"/><di:waypoint x="5850" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_33A_di" bpmnElement="Flow_TOBE_33A"><di:waypoint x="5900" y="630"/><di:waypoint x="5960" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_34_di" bpmnElement="Flow_TOBE_34"><di:waypoint x="6140" y="630"/><di:waypoint x="6190" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_35_di" bpmnElement="Flow_TOBE_35"><di:waypoint x="6380" y="800"/><di:waypoint x="6430" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_36_di" bpmnElement="Flow_TOBE_36"><di:waypoint x="6480" y="630"/><di:waypoint x="6540" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_37_di" bpmnElement="Flow_TOBE_37"><di:waypoint x="6730" y="630"/><di:waypoint x="6780" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_38_di" bpmnElement="Flow_TOBE_38"><di:waypoint x="6830" y="630"/><di:waypoint x="6890" y="630"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_39_di" bpmnElement="Flow_TOBE_39"><di:waypoint x="6995" y="590"/><di:waypoint x="6995" y="545"/><di:waypoint x="6455" y="545"/><di:waypoint x="6455" y="605"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_40_di" bpmnElement="Flow_TOBE_40"><di:waypoint x="6830" y="630"/><di:waypoint x="6890" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_41_di" bpmnElement="Flow_TOBE_41"><di:waypoint x="7110" y="800"/><di:waypoint x="7160" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_42_di" bpmnElement="Flow_TOBE_42"><di:waypoint x="7210" y="800"/><di:waypoint x="7270" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_43_di" bpmnElement="Flow_TOBE_43"><di:waypoint x="7350" y="760"/><di:waypoint x="7350" y="700"/><di:waypoint x="5875" y="700"/><di:waypoint x="5875" y="655"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TOBE_44_di" bpmnElement="Flow_TOBE_44"><di:waypoint x="7210" y="800"/><di:waypoint x="7500" y="800"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_TOBE_MedHelp_di" bpmnElement="Message_TOBE_MedHelp"><di:waypoint x="295" y="160"/><di:waypoint x="295" y="930"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_TOBE_315U_di" bpmnElement="Message_TOBE_315U"><di:waypoint x="850" y="930"/><di:waypoint x="850" y="335"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_TOBE_NotifyGov_di" bpmnElement="Message_TOBE_NotifyGov"><di:waypoint x="1240" y="670"/><di:waypoint x="1240" y="1040"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Message_TOBE_DocsGov_di" bpmnElement="Message_TOBE_DocsGov"><di:waypoint x="5680" y="675"/><di:waypoint x="5680" y="1040"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

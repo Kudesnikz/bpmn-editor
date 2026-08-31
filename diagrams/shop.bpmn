@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  id="Definitions_StorePurchase"
+  targetNamespace="https://example.local/bpmn/store-purchase">
+
+  <bpmn:collaboration id="Collaboration_Store">
+    <bpmn:participant id="Participant_Store" name="Магазин" processRef="Process_StorePurchase" />
+  </bpmn:collaboration>
+
+  <bpmn:process id="Process_StorePurchase" name="Покупка в магазине" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_Store">
+      <bpmn:lane id="Lane_Buyer" name="Покупатель">
+        <bpmn:flowNodeRef>StartEvent_Enter</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EnterStore</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectProduct</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_HandToCashier</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Pay</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Cashier" name="Кассир">
+        <bpmn:flowNodeRef>Task_ScanProduct</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Guard" name="Охранник">
+        <bpmn:flowNodeRef>Task_ExitCheck</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>EndEvent_Exit</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+
+    <bpmn:startEvent id="StartEvent_Enter" name="Пришёл в магазин">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:manualTask id="Task_EnterStore" name="Зайти в магазин">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_SelectProduct" name="Выбрать товар">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_HandToCashier" name="Передать товар кассиру">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_ScanProduct" name="Пробить товар">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_Pay" name="Оплатить покупку">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:manualTask id="Task_ExitCheck" name="Проверить покупателя на выходе">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:manualTask>
+
+    <bpmn:endEvent id="EndEvent_Exit" name="Покупатель вышел">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_Enter" targetRef="Task_EnterStore" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_EnterStore" targetRef="Task_SelectProduct" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_SelectProduct" targetRef="Task_HandToCashier" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_HandToCashier" targetRef="Task_ScanProduct" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_ScanProduct" targetRef="Task_Pay" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Pay" targetRef="Task_ExitCheck" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_ExitCheck" targetRef="EndEvent_Exit" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Store">
+    <bpmndi:BPMNPlane id="BPMNPlane_Store" bpmnElement="Collaboration_Store">
+      <bpmndi:BPMNShape id="Participant_Store_di" bpmnElement="Participant_Store" isHorizontal="true">
+        <dc:Bounds x="50" y="60" width="1420" height="450" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Lane_Buyer_di" bpmnElement="Lane_Buyer" isHorizontal="true">
+        <dc:Bounds x="80" y="60" width="1390" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Cashier_di" bpmnElement="Lane_Cashier" isHorizontal="true">
+        <dc:Bounds x="80" y="210" width="1390" height="150" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Guard_di" bpmnElement="Lane_Guard" isHorizontal="true">
+        <dc:Bounds x="80" y="360" width="1390" height="150" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="StartEvent_Enter_di" bpmnElement="StartEvent_Enter">
+        <dc:Bounds x="130" y="117" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="105" y="160" width="86" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Task_EnterStore_di" bpmnElement="Task_EnterStore">
+        <dc:Bounds x="215" y="95" width="125" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SelectProduct_di" bpmnElement="Task_SelectProduct">
+        <dc:Bounds x="385" y="95" width="125" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_HandToCashier_di" bpmnElement="Task_HandToCashier">
+        <dc:Bounds x="555" y="95" width="145" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ScanProduct_di" bpmnElement="Task_ScanProduct">
+        <dc:Bounds x="745" y="245" width="125" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pay_di" bpmnElement="Task_Pay">
+        <dc:Bounds x="915" y="95" width="135" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ExitCheck_di" bpmnElement="Task_ExitCheck">
+        <dc:Bounds x="1095" y="395" width="175" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Exit_di" bpmnElement="EndEvent_Exit">
+        <dc:Bounds x="1335" y="417" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1311" y="460" width="86" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="166" y="135" />
+        <di:waypoint x="215" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="340" y="135" />
+        <di:waypoint x="385" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="510" y="135" />
+        <di:waypoint x="555" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="700" y="135" />
+        <di:waypoint x="723" y="135" />
+        <di:waypoint x="723" y="285" />
+        <di:waypoint x="745" y="285" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="870" y="285" />
+        <di:waypoint x="892" y="285" />
+        <di:waypoint x="892" y="135" />
+        <di:waypoint x="915" y="135" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1050" y="135" />
+        <di:waypoint x="1072" y="135" />
+        <di:waypoint x="1072" y="435" />
+        <di:waypoint x="1095" y="435" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="1270" y="435" />
+        <di:waypoint x="1335" y="435" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

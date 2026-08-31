@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_BIO_ASIS" targetNamespace="https://sergeygalay.github.io/bpmn-editor/bio-antimotivation-as-is">
+  <bpmn:collaboration id="Collab_BIO_ASIS">
+    <bpmn:participant id="Participant_User_ASIS" name="Пользователь" />
+    <bpmn:participant id="Participant_BIO_ASIS" name="БИО" processRef="Process_BIO_ASIS" />
+    <bpmn:messageFlow id="MF_Submit_ASIS" name="Зарегистрированная опасность" sourceRef="Participant_User_ASIS" targetRef="Start_Submit_ASIS" />
+    <bpmn:messageFlow id="MF_NotifyAccepted_ASIS" name="Баллы и статус" sourceRef="Task_NotifyAccepted_ASIS" targetRef="Participant_User_ASIS" />
+    <bpmn:messageFlow id="MF_NotifyRejected_ASIS" name="Результат модерации" sourceRef="Task_NotifyRejected_ASIS" targetRef="Participant_User_ASIS" />
+  </bpmn:collaboration>
+  <bpmn:process id="Process_BIO_ASIS" name="Геймификация БИО — AS IS" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_ASIS">
+      <bpmn:lane id="Lane_Moderation_ASIS" name="Модерация">
+        <bpmn:flowNodeRef>Start_Submit_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Moderate_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gw_Accepted_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_Reject_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyRejected_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Rejected_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_Gamification_ASIS" name="Геймификация">
+        <bpmn:flowNodeRef>Task_Award_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_RecalcStatus_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_NotifyAccepted_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_Accepted_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Start_Inactivity_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_KeepProgress_ASIS</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>End_NoImpact_ASIS</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_Submit_ASIS" name="Опасность зарегистрирована">
+      <bpmn:messageEventDefinition id="MED_Submit_ASIS" />
+    </bpmn:startEvent>
+    <bpmn:userTask id="Task_Moderate_ASIS" name="Проверить опасность" />
+    <bpmn:exclusiveGateway id="Gw_Accepted_ASIS" name="Опасность подтверждена?" />
+    <bpmn:serviceTask id="Task_Reject_ASIS" name="Отклонить заявку" />
+    <bpmn:sendTask id="Task_NotifyRejected_ASIS" name="Уведомить об отклонении" />
+    <bpmn:endEvent id="End_Rejected_ASIS" name="Баллы не начислены" />
+    <bpmn:serviceTask id="Task_Award_ASIS" name="Начислить баллы" />
+    <bpmn:serviceTask id="Task_RecalcStatus_ASIS" name="Пересчитать статус" />
+    <bpmn:sendTask id="Task_NotifyAccepted_ASIS" name="Показать баллы и статус" />
+    <bpmn:endEvent id="End_Accepted_ASIS" name="Прогресс накоплен" />
+    <bpmn:startEvent id="Start_Inactivity_ASIS" name="Пользователь длительно неактивен">
+      <bpmn:timerEventDefinition id="TED_Inactivity_ASIS" />
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="Task_KeepProgress_ASIS" name="Оставить баллы и статус без изменений" />
+    <bpmn:endEvent id="End_NoImpact_ASIS" name="Неактивность не влияет на рейтинг" />
+    <bpmn:sequenceFlow id="F_ASIS_1" sourceRef="Start_Submit_ASIS" targetRef="Task_Moderate_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_2" sourceRef="Task_Moderate_ASIS" targetRef="Gw_Accepted_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_3Y" name="Да" sourceRef="Gw_Accepted_ASIS" targetRef="Task_Award_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_3N" name="Нет" sourceRef="Gw_Accepted_ASIS" targetRef="Task_Reject_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_4N" sourceRef="Task_Reject_ASIS" targetRef="Task_NotifyRejected_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_5N" sourceRef="Task_NotifyRejected_ASIS" targetRef="End_Rejected_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_4Y" sourceRef="Task_Award_ASIS" targetRef="Task_RecalcStatus_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_5Y" sourceRef="Task_RecalcStatus_ASIS" targetRef="Task_NotifyAccepted_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_6Y" sourceRef="Task_NotifyAccepted_ASIS" targetRef="End_Accepted_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_7" sourceRef="Start_Inactivity_ASIS" targetRef="Task_KeepProgress_ASIS" />
+    <bpmn:sequenceFlow id="F_ASIS_8" sourceRef="Task_KeepProgress_ASIS" targetRef="End_NoImpact_ASIS" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="Diagram_ASIS">
+    <bpmndi:BPMNPlane id="Plane_ASIS" bpmnElement="Collab_BIO_ASIS">
+      <bpmndi:BPMNShape id="Participant_User_ASIS_di" bpmnElement="Participant_User_ASIS" isHorizontal="true">
+        <dc:Bounds x="40" y="30" width="1680" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Participant_BIO_ASIS_di" bpmnElement="Participant_BIO_ASIS" isHorizontal="true">
+        <dc:Bounds x="40" y="140" width="1680" height="420" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Gamification_ASIS_di" bpmnElement="Lane_Gamification_ASIS" isHorizontal="true">
+        <dc:Bounds x="70" y="350" width="1650" height="210" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_Moderation_ASIS_di" bpmnElement="Lane_Moderation_ASIS" isHorizontal="true">
+        <dc:Bounds x="70" y="140" width="1650" height="210" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Submit_ASIS_di" bpmnElement="Start_Submit_ASIS">
+        <dc:Bounds x="120" y="225" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="90" y="268" width="100" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Moderate_ASIS_di" bpmnElement="Task_Moderate_ASIS">
+        <dc:Bounds x="230" y="200" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gw_Accepted_ASIS_di" bpmnElement="Gw_Accepted_ASIS" isMarkerVisible="true">
+        <dc:Bounds x="455" y="215" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="400" y="186" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Reject_ASIS_di" bpmnElement="Task_Reject_ASIS">
+        <dc:Bounds x="590" y="170" width="140" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyRejected_ASIS_di" bpmnElement="Task_NotifyRejected_ASIS">
+        <dc:Bounds x="815" y="170" width="165" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Rejected_ASIS_di" bpmnElement="End_Rejected_ASIS">
+        <dc:Bounds x="1060" y="187" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1025" y="230" width="110" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Award_ASIS_di" bpmnElement="Task_Award_ASIS">
+        <dc:Bounds x="590" y="390" width="140" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RecalcStatus_ASIS_di" bpmnElement="Task_RecalcStatus_ASIS">
+        <dc:Bounds x="815" y="390" width="150" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NotifyAccepted_ASIS_di" bpmnElement="Task_NotifyAccepted_ASIS">
+        <dc:Bounds x="1050" y="390" width="165" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Accepted_ASIS_di" bpmnElement="End_Accepted_ASIS">
+        <dc:Bounds x="1290" y="407" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1250" y="450" width="115" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Start_Inactivity_ASIS_di" bpmnElement="Start_Inactivity_ASIS">
+        <dc:Bounds x="120" y="492" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="85" y="530" width="110" height="28" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_KeepProgress_ASIS_di" bpmnElement="Task_KeepProgress_ASIS">
+        <dc:Bounds x="230" y="475" width="205" height="70" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_NoImpact_ASIS_di" bpmnElement="End_NoImpact_ASIS">
+        <dc:Bounds x="510" y="492" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="470" y="530" width="120" height="42" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="F_ASIS_1_di" bpmnElement="F_ASIS_1">
+        <di:waypoint x="156" y="243" />
+        <di:waypoint x="230" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_2_di" bpmnElement="F_ASIS_2">
+        <di:waypoint x="380" y="240" />
+        <di:waypoint x="455" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_3Y_di" bpmnElement="F_ASIS_3Y">
+        <di:waypoint x="480" y="265" />
+        <di:waypoint x="480" y="425" />
+        <di:waypoint x="590" y="425" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="488" y="273" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_3N_di" bpmnElement="F_ASIS_3N">
+        <di:waypoint x="480" y="215" />
+        <di:waypoint x="480" y="205" />
+        <di:waypoint x="590" y="205" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="500" y="183" width="19" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_4N_di" bpmnElement="F_ASIS_4N">
+        <di:waypoint x="730" y="205" />
+        <di:waypoint x="815" y="205" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_5N_di" bpmnElement="F_ASIS_5N">
+        <di:waypoint x="980" y="205" />
+        <di:waypoint x="1060" y="205" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_4Y_di" bpmnElement="F_ASIS_4Y">
+        <di:waypoint x="730" y="425" />
+        <di:waypoint x="815" y="425" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_5Y_di" bpmnElement="F_ASIS_5Y">
+        <di:waypoint x="965" y="425" />
+        <di:waypoint x="1050" y="425" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_6Y_di" bpmnElement="F_ASIS_6Y">
+        <di:waypoint x="1215" y="425" />
+        <di:waypoint x="1290" y="425" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_7_di" bpmnElement="F_ASIS_7">
+        <di:waypoint x="156" y="510" />
+        <di:waypoint x="230" y="510" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="F_ASIS_8_di" bpmnElement="F_ASIS_8">
+        <di:waypoint x="435" y="510" />
+        <di:waypoint x="510" y="510" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_Submit_ASIS_di" bpmnElement="MF_Submit_ASIS">
+        <di:waypoint x="138" y="110" />
+        <di:waypoint x="138" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_NotifyAccepted_ASIS_di" bpmnElement="MF_NotifyAccepted_ASIS">
+        <di:waypoint x="1132" y="390" />
+        <di:waypoint x="1132" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF_NotifyRejected_ASIS_di" bpmnElement="MF_NotifyRejected_ASIS">
+        <di:waypoint x="897" y="170" />
+        <di:waypoint x="897" y="110" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
