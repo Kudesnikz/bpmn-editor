@@ -16,7 +16,7 @@ This repository contains a self-hosted BPMN editor, REST API, and Streamable HTT
 - `/mcp`: Bearer token, exact allowed browser Origin or no Origin for server clients.
 - `/healthz`: public and contains status/version only.
 - The web UI may create, update, duplicate, and delete diagrams.
-- MCP may list, get, validate, create, and update diagrams. MCP must not expose deletion.
+- MCP may list diagrams and groups, get or inspect a diagram, validate XML, create, update, and duplicate diagrams. MCP must not expose deletion.
 - All writes require BPMN validation. Updates and deletes require the current SHA-256 revision.
 - Writes use a temporary file plus atomic rename; catalog mutations stay serialized.
 

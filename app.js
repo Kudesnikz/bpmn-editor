@@ -4,7 +4,7 @@ import 'bpmn-js/dist/assets/bpmn-font/css/bpmn.css';
 import './styles.css';
 import { setupPngExport } from './export.js';
 
-const modeler = new BpmnModeler({ container: '#canvas', keyboard: { bindTo: document } });
+const modeler = new BpmnModeler({ container: '#canvas' });
 const $ = id => document.getElementById(id);
 const elements = {
   status: $('status'), name: $('model-name'), description: $('model-description'), path: $('model-path'), revision: $('model-revision'),
@@ -336,7 +336,9 @@ async function copyText(value, successMessage) {
 function openMcpDialog() {
   if (serverConfig) {
     $('mcp-url').textContent = serverConfig.mcpUrl;
-    $('mcp-codex-config').textContent = `[mcp_servers.bpmn]\nurl = "${serverConfig.mcpUrl}"\nbearer_token_env_var = "BPMN_MCP_API_KEY"\ndefault_tools_approval_mode = "writes"\nrequired = true`;
+    $('mcp-codex-config').textContent = serverConfig.codexConfig;
+    $('mcp-skill-prompt').textContent = serverConfig.skillCreatorPrompt;
+    $('mcp-skill-markdown').textContent = serverConfig.skillMarkdown;
   }
   openDialog($('mcp-dialog'));
 }
@@ -369,6 +371,8 @@ function wireEvents() {
   for (const id of ['mcp-connect', 'empty-mcp']) $(id).addEventListener('click', openMcpDialog);
   $('copy-mcp-url').addEventListener('click', () => void copyText(serverConfig?.mcpUrl || '', 'MCP URL скопирован.'));
   $('copy-codex-config').addEventListener('click', () => void copyText($('mcp-codex-config').textContent, 'Codex-конфигурация скопирована.'));
+  $('copy-skill-prompt').addEventListener('click', () => void copyText($('mcp-skill-prompt').textContent, 'Промпт для Skill Creator скопирован.'));
+  $('copy-skill-markdown').addEventListener('click', () => void copyText($('mcp-skill-markdown').textContent, 'SKILL.md скопирован.'));
   elements.save.addEventListener('click', () => void saveCurrentDiagram());
   $('reload').addEventListener('click', () => void refreshCurrent());
   elements.copyLink.addEventListener('click', () => {

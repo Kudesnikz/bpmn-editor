@@ -6,11 +6,14 @@ import type {
   CatalogEntry,
   CatalogFile,
   DiagramCreateInput,
+  DiagramInspectionRecord,
   DiagramRecord,
   DiagramSummary,
   DiagramUpdateInput,
+  GroupList,
   ValidationResult
 } from './types.js';
+import { inspectBpmn } from './inspection.js';
 import { validateBpmn } from './validation.js';
 
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -138,12 +141,38 @@ export class DiagramStorage {
     });
   }
 
+  async listGroups(): Promise<GroupList> {
+    const catalog = await this.readCatalog();
+    const counts = new Map<string, number>();
+    let ungroupedCount = 0;
+    for (const entry of catalog.diagrams) {
+      const group = entry.group?.trim();
+      if (!group) {
+        ungroupedCount += 1;
+        continue;
+      }
+      counts.set(group, (counts.get(group) || 0) + 1);
+    }
+    return {
+      groups: [...counts.entries()]
+        .map(([name, diagramCount]) => ({ name, diagramCount }))
+        .sort((left, right) => left.name.localeCompare(right.name, 'ru')),
+      ungroupedCount
+    };
+  }
+
   async get(id: string): Promise<DiagramRecord> {
     this.assertId(id);
     const catalog = await this.readCatalog();
     const entry = catalog.diagrams.find(diagram => diagram.id === id);
     if (!entry) throw new AppError(404, 'DIAGRAM_NOT_FOUND', `Diagram ${id} was not found`);
     return this.recordFor(entry);
+  }
+
+  async inspect(id: string): Promise<DiagramInspectionRecord> {
+    const record = await this.get(id);
+    const { xml, ...diagram } = record;
+    return { diagram, ...await inspectBpmn(xml, this.maxBpmnBytes) };
   }
 
   async validate(xml: string): Promise<ValidationResult> {

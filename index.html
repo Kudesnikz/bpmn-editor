@@ -107,16 +107,40 @@
       <section class="connection-section">
         <div class="section-heading"><div><span class="step-number">1</span><strong>Endpoint</strong></div><button id="copy-mcp-url" class="small-button" type="button">Копировать</button></div>
         <div class="copy-field"><code id="mcp-url">Загрузка…</code></div>
-        <p class="security-copy">Авторизация: <code>Authorization: Bearer &lt;MCP_API_KEY&gt;</code>. Сам ключ задаётся на сервере и не передаётся в веб-интерфейс.</p>
+        <p class="security-copy">Streamable HTTP с авторизацией <code>Authorization: Bearer …</code>. Готовый заголовок уже включён в конфигурацию ниже.</p>
       </section>
       <section class="connection-section">
         <div class="section-heading"><div><span class="step-number">2</span><strong>Codex config.toml</strong></div><button id="copy-codex-config" class="small-button" type="button">Копировать</button></div>
         <pre id="mcp-codex-config" class="code-block"></pre>
+        <p class="token-warning">Конфигурация содержит действующий MCP-токен и разрешает запись диаграмм. Храните её как секрет. После ротации <code>MCP_API_KEY</code> скопированный конфиг перестанет работать.</p>
       </section>
       <section class="connection-section tools-section">
         <div class="section-heading"><div><span class="step-number">3</span><strong>Доступные инструменты</strong></div></div>
-        <div class="tool-list"><code>list_diagrams</code><code>get_diagram</code><code>validate_bpmn</code><code>create_diagram</code><code>update_diagram</code></div>
+        <div class="tool-grid">
+          <div><code>list_diagrams</code><span>Каталог, поиск и ревизии</span></div>
+          <div><code>list_groups</code><span>Группы и количество диаграмм</span></div>
+          <div><code>get_diagram</code><span>XML, метаданные и ревизия</span></div>
+          <div><code>inspect_diagram</code><span>Структура и качество без XML</span></div>
+          <div><code>validate_bpmn</code><span>Проверка без сохранения</span></div>
+          <div><code>create_diagram</code><span>Создание полной модели</span></div>
+          <div><code>update_diagram</code><span>Изменение по актуальной ревизии</span></div>
+          <div><code>duplicate_diagram</code><span>Безопасное создание копии</span></div>
+        </div>
         <p class="security-copy">Удаление через MCP намеренно недоступно. Оно выполняется только человеком в редакторе.</p>
+      </section>
+      <section class="connection-section skill-section">
+        <div class="section-heading"><div><span class="step-number">4</span><strong>Рекомендуемый BPMN Skill</strong></div></div>
+        <p class="security-copy">Skill помогает Codex стабильно соблюдать workflow чтения, ревизий, BPMN DI и проверки модели. Сайт не устанавливает его автоматически.</p>
+        <details class="skill-details" open>
+          <summary>Промпт для $skill-creator</summary>
+          <div class="skill-copy-row"><span>Отправьте этот текст Codex</span><button id="copy-skill-prompt" class="small-button" type="button">Копировать</button></div>
+          <pre id="mcp-skill-prompt" class="code-block"></pre>
+        </details>
+        <details class="skill-details">
+          <summary>Готовый SKILL.md</summary>
+          <div class="skill-copy-row"><span>Для ручного создания skill</span><button id="copy-skill-markdown" class="small-button" type="button">Копировать</button></div>
+          <pre id="mcp-skill-markdown" class="code-block"></pre>
+        </details>
       </section>
     </div>
   </dialog>

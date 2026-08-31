@@ -1,6 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod/v4';
 import type { AppConfig } from './config.js';
+import { BPMN_SKILL_CREATOR_PROMPT, BPMN_SKILL_MARKDOWN, buildCodexConfig } from './connection.js';
 import { AppError } from './errors.js';
 import { logError, logEvent } from './logger.js';
 import type { DiagramStorage } from './storage.js';
@@ -66,11 +67,16 @@ export function createApiRouter(storage: DiagramStorage, config: AppConfig): Rou
   const router = Router();
 
   router.get('/config', (_req, res) => {
+    const mcpUrl = `${config.publicBaseUrl}/mcp`;
+    res.setHeader('Cache-Control', 'private, no-store');
     res.json({
       name: 'BPMN MCP Editor',
       version: '1.0.0',
-      mcpUrl: `${config.publicBaseUrl}/mcp`,
-      maxBpmnBytes: config.maxBpmnBytes
+      mcpUrl,
+      maxBpmnBytes: config.maxBpmnBytes,
+      codexConfig: buildCodexConfig(mcpUrl, config.mcpApiKey),
+      skillCreatorPrompt: BPMN_SKILL_CREATOR_PROMPT,
+      skillMarkdown: BPMN_SKILL_MARKDOWN
     });
   });
 

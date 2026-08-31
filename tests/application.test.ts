@@ -72,7 +72,19 @@ describe('BPMN application', () => {
 
   it('protects REST with Basic Auth and MCP with Bearer Auth', async () => {
     await request(app).get('/api/diagrams').expect(401).expect('WWW-Authenticate', /Basic/);
+    await request(app).get('/api/config').expect(401).expect('WWW-Authenticate', /Basic/);
     await request(app).get('/api/diagrams').auth(basic.user, basic.password).expect(200);
+    await request(app).get('/api/config').auth(basic.user, basic.password).expect(200)
+      .expect('Cache-Control', /private, no-store/)
+      .expect(({ body }) => {
+        expect(body.codexConfig).toContain(`http_headers = { Authorization = "Bearer ${mcpKey}" }`);
+        expect(body).not.toHaveProperty('mcpApiKey');
+        expect(body.skillCreatorPrompt).toContain('$skill-creator');
+        expect(body.skillMarkdown).toContain('name: bpmn-mcp-modeler');
+      });
+    await request(app).get('/healthz').expect(200).expect(({ body }) => {
+      expect(JSON.stringify(body)).not.toContain(mcpKey);
+    });
     await request(app).get('/api/not-a-route').auth(basic.user, basic.password)
       .expect(404).expect(({ body }) => expect(body.error.code).toBe('NOT_FOUND'));
     await request(app).post('/api/diagrams').auth(basic.user, basic.password)
@@ -94,6 +106,25 @@ describe('BPMN application', () => {
       .send(initialize)
       .expect(200)
       .expect('Content-Type', /application\/json|text\/event-stream/);
+  });
+
+  it('derives groups from diagram metadata without changing the catalog format', async () => {
+    await storage.create({ id: 'ungrouped', name: 'Ungrouped' });
+    await storage.create({ id: 'hr-flow', name: 'HR flow', group: 'HR' });
+
+    const groupList = await storage.listGroups();
+    expect(groupList.groups).toEqual(expect.arrayContaining([
+      { name: 'HR', diagramCount: 1 },
+      { name: 'Продажи', diagramCount: 2 }
+    ]));
+    expect(groupList.groups.map(group => group.name)).toEqual(
+      groupList.groups.map(group => group.name).sort((left, right) => left.localeCompare(right, 'ru'))
+    );
+    expect(groupList.ungroupedCount).toBe(1);
+
+    const catalog = JSON.parse(await readFile(path.join(dataDir, 'index.json'), 'utf8'));
+    expect(catalog).toHaveProperty('diagrams');
+    expect(catalog).not.toHaveProperty('groups');
   });
 
   it('creates, validates, updates with revision protection, and deletes through REST', async () => {
@@ -163,16 +194,32 @@ describe('BPMN application', () => {
       await client.connect(transport);
       const tools = await client.listTools();
       expect(tools.tools.map(tool => tool.name).sort()).toEqual([
-        'create_diagram', 'get_diagram', 'list_diagrams', 'update_diagram', 'validate_bpmn'
+        'create_diagram', 'duplicate_diagram', 'get_diagram', 'inspect_diagram',
+        'list_diagrams', 'list_groups', 'update_diagram', 'validate_bpmn'
       ]);
       expect(tools.tools.some(tool => tool.name.includes('delete'))).toBe(false);
 
       const listed = await client.callTool({ name: 'list_diagrams', arguments: {} });
       expect((listed.structuredContent as { diagrams: unknown[] }).diagrams).toHaveLength(2);
 
+      const groups = await client.callTool({ name: 'list_groups', arguments: {} });
+      expect(groups.structuredContent).toMatchObject({
+        groups: [{ name: 'Продажи', diagramCount: 2 }],
+        ungroupedCount: 0
+      });
+
       const loaded = await client.callTool({ name: 'get_diagram', arguments: { id: 'shop' } });
       const revision = (loaded.structuredContent as { diagram: { revision: string } }).diagram.revision;
       expect(revision).toMatch(/^[a-f0-9]{64}$/);
+
+      const inspected = await client.callTool({ name: 'inspect_diagram', arguments: { id: 'shop' } });
+      const inspection = (inspected.structuredContent as { inspection: Record<string, any> }).inspection;
+      expect(inspection.diagram).toMatchObject({ id: 'shop', revision });
+      expect(inspection.diagram).not.toHaveProperty('xml');
+      expect(inspection).not.toHaveProperty('xml');
+      expect(inspection.statistics).toMatchObject({ processes: 1 });
+      expect(inspection.di).toMatchObject({ complete: true, diagramCount: 1, planeCount: 1 });
+      expect(inspection.validation).toMatchObject({ valid: true });
 
       const created = await client.callTool({
         name: 'create_diagram',
@@ -185,6 +232,24 @@ describe('BPMN application', () => {
       });
       expect(created.isError).not.toBe(true);
       expect((created.structuredContent as { diagram: { url: string } }).diagram.url).toContain('?diagram=mcp-created');
+
+      const groupsAfterCreate = await client.callTool({ name: 'list_groups', arguments: {} });
+      expect((groupsAfterCreate.structuredContent as { groups: Array<{ name: string }> }).groups)
+        .toEqual(expect.arrayContaining([{ name: 'Tests', diagramCount: 1 }]));
+
+      const duplicated = await client.callTool({
+        name: 'duplicate_diagram',
+        arguments: {
+          source_id: 'shop',
+          expected_revision: revision,
+          new_id: 'shop-copy',
+          name: 'Shop copy'
+        }
+      });
+      expect(duplicated.isError).not.toBe(true);
+      expect((duplicated.structuredContent as { diagram: { group: string; url: string } }).diagram)
+        .toMatchObject({ group: 'Продажи', url: expect.stringContaining('?diagram=shop-copy') });
+      expect((await storage.get('shop-copy')).xml).toBe((await storage.get('shop')).xml);
 
       const resources = await client.listResources();
       expect(resources.resources.map(resource => resource.uri)).toEqual(expect.arrayContaining([
@@ -200,6 +265,18 @@ describe('BPMN application', () => {
         arguments: { id: 'shop', expected_revision: revision, description: 'Updated by MCP test' }
       });
       expect(firstUpdate.isError).not.toBe(true);
+
+      const staleDuplicate = await client.callTool({
+        name: 'duplicate_diagram',
+        arguments: {
+          source_id: 'shop',
+          expected_revision: revision,
+          new_id: 'stale-copy',
+          name: 'Stale copy'
+        }
+      });
+      expect(staleDuplicate.isError).toBe(true);
+      expect((staleDuplicate.structuredContent as { error: { code: string } }).error.code).toBe('REVISION_CONFLICT');
 
       const staleUpdate = await client.callTool({
         name: 'update_diagram',

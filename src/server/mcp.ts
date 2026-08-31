@@ -12,7 +12,8 @@ import { logError, logEvent } from './logger.js';
 import type { DiagramStorage } from './storage.js';
 
 const MODELING_GUIDE = `BPMN modeling rules:
-- Always read the catalog and the current diagram before updating it.
+- Before creating, inspect available groups and diagrams. A new non-empty group value creates that group implicitly.
+- Always read the current diagram before updating or duplicating it. Use inspect_diagram when a compact structural view is useful.
 - Preserve element IDs when their business meaning remains unchanged.
 - Every model must include BPMN DI: BPMNDiagram, BPMNPlane, shapes, edges, and waypoints.
 - Use lanes for roles in one process and pools/participants for independent parties.
@@ -21,7 +22,7 @@ const MODELING_GUIDE = `BPMN modeling rules:
 - Lay out the primary flow left-to-right with readable labels and minimal crossings.
 - The server has no delete tool. Destructive deletion is available only to a human in the web editor.`;
 
-const INSTRUCTIONS = `Before updating a diagram, call get_diagram and pass its exact revision to update_diagram. Preserve element IDs when meaning is unchanged. Every saved model must be valid BPMN 2.0 with complete BPMN DI. Use lanes for roles, pools for independent participants, sequence flows only within a pool, and message flows only between distinct participants. After create/update, return the editor URL. The MCP server never deletes diagrams.\n\n${MODELING_GUIDE}`;
+const INSTRUCTIONS = `Before any update or duplicate, call get_diagram and pass its exact revision. Preserve element IDs when meaning is unchanged. Every saved model must be valid BPMN 2.0 with complete BPMN DI. Use lanes for roles, pools for independent participants, sequence flows only within a pool, and message flows only between distinct participants. Never delete diagrams through MCP. After create, update, or duplicate, return the editor URL.\n\n${MODELING_GUIDE}`;
 
 function success(message: string, data: Record<string, unknown>): CallToolResult {
   return {
@@ -78,6 +79,19 @@ function buildServer(storage: DiagramStorage, config: AppConfig): McpServer {
     return success(`Found ${diagrams.length} BPMN diagram(s).`, { diagrams });
   }));
 
+  server.registerTool('list_groups', {
+    title: 'List BPMN groups',
+    description: 'List distinct non-empty diagram groups and diagram counts. Groups are metadata and exist only while they contain diagrams.',
+    inputSchema: z.object({}),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true }
+  }, () => runTool('list_groups', undefined, async () => {
+    const result = await storage.listGroups();
+    return success(`Found ${result.groups.length} BPMN group(s).`, {
+      groups: result.groups,
+      ungroupedCount: result.ungroupedCount
+    });
+  }));
+
   server.registerTool('get_diagram', {
     title: 'Get a BPMN diagram',
     description: 'Read current BPMN XML, metadata, editor URL, and revision. Always call this before update_diagram.',
@@ -86,6 +100,16 @@ function buildServer(storage: DiagramStorage, config: AppConfig): McpServer {
   }, ({ id }) => runTool('get_diagram', id, async () => {
     const diagram = await storage.get(id);
     return success(`Loaded ${diagram.name}. Current revision: ${diagram.revision}`, { diagram });
+  }));
+
+  server.registerTool('inspect_diagram', {
+    title: 'Inspect a BPMN diagram',
+    description: 'Return current metadata, revision, structural graph, BPMN DI coverage, and validation issues without returning full XML.',
+    inputSchema: z.object({ id: z.string().describe('Stable lowercase kebab-case diagram id') }),
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true }
+  }, ({ id }) => runTool('inspect_diagram', id, async () => {
+    const inspection = await storage.inspect(id);
+    return success(`Inspected ${inspection.diagram.name}. Current revision: ${inspection.diagram.revision}`, { inspection });
   }));
 
   server.registerTool('validate_bpmn', {
@@ -131,6 +155,30 @@ function buildServer(storage: DiagramStorage, config: AppConfig): McpServer {
   }, ({ id, expected_revision, ...changes }) => runTool('update_diagram', id, async () => {
     const result = await storage.update(id, { expectedRevision: expected_revision, ...changes });
     return success(`Updated ${result.diagram.name}. Open: ${result.diagram.url}`, result);
+  }));
+
+  server.registerTool('duplicate_diagram', {
+    title: 'Duplicate a BPMN diagram',
+    description: 'Atomically duplicate an existing diagram without changing BPMN element IDs. Requires the exact source revision.',
+    inputSchema: z.object({
+      source_id: z.string().describe('Existing source diagram id'),
+      expected_revision: z.string().describe('Exact revision returned by get_diagram'),
+      new_id: z.string().describe('New stable lowercase kebab-case id'),
+      name: z.string().min(1).max(120),
+      group: z.string().max(80).optional().describe('Defaults to the source group when omitted'),
+      description: z.string().max(500).optional().describe('Defaults to the source description when omitted')
+    }),
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false }
+  }, ({ source_id, expected_revision, new_id, name, group, description }) => runTool('duplicate_diagram', source_id, async () => {
+    const source = await storage.get(source_id);
+    const result = await storage.duplicate(source_id, {
+      id: new_id,
+      name,
+      group: group === undefined ? source.group : group,
+      description: description === undefined ? source.description : description,
+      expectedRevision: expected_revision
+    });
+    return success(`Duplicated ${source.name} as ${result.diagram.name}. Open: ${result.diagram.url}`, result);
   }));
 
   server.registerResource('bpmn-catalog', 'bpmn://catalog', {

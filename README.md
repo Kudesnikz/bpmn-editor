@@ -10,7 +10,7 @@
 - атомарные записи и optimistic locking по SHA-256 `revision`;
 - строгая проверка BPMN XML и BPMN DI через `bpmn-moddle`;
 - Streamable HTTP MCP на едином endpoint `/mcp`;
-- MCP tools: `list_diagrams`, `get_diagram`, `validate_bpmn`, `create_diagram`, `update_diagram`;
+- MCP tools: `list_diagrams`, `list_groups`, `get_diagram`, `inspect_diagram`, `validate_bpmn`, `create_diagram`, `update_diagram`, `duplicate_diagram`;
 - MCP resources: `bpmn://catalog`, `bpmn://diagram/{id}`, `bpmn://modeling-guide`;
 - один production-контейнер на Node.js 22, запуск от непривилегированного пользователя.
 
@@ -62,21 +62,17 @@ Volume `bpmn_diagrams` монтируется в `/data/diagrams`:
 
 ## Подключение Codex
 
-Задайте тот же MCP-ключ в окружении клиента:
-
-```bash
-export BPMN_MCP_API_KEY="..."
-```
-
-И добавьте в Codex `config.toml`:
+Откройте в редакторе окно «Подключить ИИ» и скопируйте готовый `config.toml`. Он уже содержит действующий Bearer-токен в статическом HTTP-заголовке:
 
 ```toml
 [mcp_servers.bpmn]
 url = "https://bpmn.example.ru/mcp"
-bearer_token_env_var = "BPMN_MCP_API_KEY"
+http_headers = { Authorization = "Bearer <MCP_API_KEY>" }
 default_tools_approval_mode = "writes"
 required = true
 ```
+
+Страница и `/api/config` защищены Basic Auth, а ответ конфигурации запрещён кэшировать. Скопированный TOML является секретом и даёт право изменять диаграммы через MCP. В этом же окне доступны промпт для `$skill-creator` и готовый `SKILL.md` с рекомендуемым BPMN workflow.
 
 После работы нейросети нажмите «Обновить» в редакторе. Фонового polling нет.
 
