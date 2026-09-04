@@ -250,7 +250,7 @@ async function loadCatalog() {
   folders = response.folders || [];
   catalogRevision = response.catalogRevision;
   const refreshedCurrent = currentDiagram && diagrams.find(diagram => diagram.id === currentDiagram.id);
-  if (refreshedCurrent?.revision === currentDiagram.revision) {
+  if (currentDiagram && refreshedCurrent?.revision === currentDiagram.revision) {
     currentDiagram = { ...currentDiagram, ...refreshedCurrent };
     renderDiagramMeta();
   } else renderCatalog();
