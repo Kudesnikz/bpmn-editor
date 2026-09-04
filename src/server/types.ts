@@ -1,16 +1,30 @@
+export interface FolderEntry {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+export interface FolderPathSegment {
+  id: string;
+  name: string;
+}
+
 export interface CatalogEntry {
   id: string;
   name: string;
-  group?: string;
+  folderId: string | null;
   description?: string;
   path: string;
 }
 
 export interface CatalogFile {
+  schemaVersion: 2;
+  folders: FolderEntry[];
   diagrams: CatalogEntry[];
 }
 
 export interface DiagramSummary extends CatalogEntry {
+  folderPath: FolderPathSegment[];
   revision: string;
   updatedAt: string;
 }
@@ -20,14 +34,21 @@ export interface DiagramRecord extends DiagramSummary {
   url: string;
 }
 
-export interface GroupSummary {
-  name: string;
-  diagramCount: number;
+export interface FolderSummary extends FolderEntry {
+  path: FolderPathSegment[];
+  directDiagramCount: number;
+  totalDiagramCount: number;
+  childFolderCount: number;
 }
 
-export interface GroupList {
-  groups: GroupSummary[];
-  ungroupedCount: number;
+export interface FolderList {
+  catalogRevision: string;
+  folders: FolderSummary[];
+  unfiledDiagramCount: number;
+}
+
+export interface CatalogSnapshot extends FolderList {
+  diagrams: DiagramSummary[];
 }
 
 export interface ValidationIssue {
@@ -101,7 +122,7 @@ export interface DiagramInspectionRecord extends DiagramInspection {
 export interface DiagramCreateInput {
   id: string;
   name: string;
-  group?: string;
+  folderId?: string | null;
   description?: string;
   xml?: string;
 }
@@ -109,7 +130,19 @@ export interface DiagramCreateInput {
 export interface DiagramUpdateInput {
   expectedRevision: string;
   name?: string;
-  group?: string;
+  folderId?: string | null;
   description?: string;
   xml?: string;
+}
+
+export interface FolderCreateInput {
+  name: string;
+  parentId?: string | null;
+  expectedCatalogRevision: string;
+}
+
+export interface FolderUpdateInput {
+  name?: string;
+  parentId?: string | null;
+  expectedCatalogRevision: string;
 }

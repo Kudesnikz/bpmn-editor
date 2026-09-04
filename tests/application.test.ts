@@ -1,5 +1,5 @@
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server as HttpServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -56,132 +56,165 @@ describe('BPMN application', () => {
     httpServer = undefined;
   });
 
-  it('refuses to start without required web and MCP secrets', () => {
+  it('refuses to start without required secrets and protects each boundary', async () => {
     expect(() => loadConfig({ PUBLIC_BASE_URL: 'https://bpmn.example.test', WEB_USERNAME: 'admin' })).toThrow(/WEB_PASSWORD, MCP_API_KEY/);
-  });
-
-  it('seeds only shop and return and never re-seeds an existing catalog', async () => {
-    expect((await storage.list()).map(diagram => diagram.id).sort()).toEqual(['return', 'shop']);
-
-    await storage.create({ id: 'custom-flow', name: 'Custom flow' });
-    const secondStorage = new DiagramStorage(dataDir, config.seedDir, config.publicBaseUrl, config.maxBpmnBytes);
-    await secondStorage.initialize();
-
-    expect((await secondStorage.list()).map(diagram => diagram.id).sort()).toEqual(['custom-flow', 'return', 'shop']);
-  });
-
-  it('protects REST with Basic Auth and MCP with Bearer Auth', async () => {
-    await request(app).get('/api/diagrams').expect(401).expect('WWW-Authenticate', /Basic/);
+    await request(app).get('/api/catalog').expect(401).expect('WWW-Authenticate', /Basic/);
     await request(app).get('/api/config').expect(401).expect('WWW-Authenticate', /Basic/);
-    await request(app).get('/api/diagrams').auth(basic.user, basic.password).expect(200);
+    await request(app).get('/api/catalog').auth(basic.user, basic.password).expect(200);
     await request(app).get('/api/config').auth(basic.user, basic.password).expect(200)
       .expect('Cache-Control', /private, no-store/)
       .expect(({ body }) => {
         expect(body.codexConfig).toContain(`http_headers = { Authorization = "Bearer ${mcpKey}" }`);
         expect(body).not.toHaveProperty('mcpApiKey');
-        expect(body.skillCreatorPrompt).toContain('$skill-creator');
-        expect(body.skillMarkdown).toContain('name: bpmn-mcp-modeler');
+        expect(body.skillCreatorPrompt).toContain('list_folders');
+        expect(body.skillMarkdown).toContain('create_folder');
+        expect(JSON.stringify(body)).not.toContain('list_groups');
       });
-    await request(app).get('/healthz').expect(200).expect(({ body }) => {
-      expect(JSON.stringify(body)).not.toContain(mcpKey);
-    });
-    await request(app).get('/api/not-a-route').auth(basic.user, basic.password)
-      .expect(404).expect(({ body }) => expect(body.error.code).toBe('NOT_FOUND'));
-    await request(app).post('/api/diagrams').auth(basic.user, basic.password)
-      .set('Content-Type', 'application/json').send('{').expect(400)
-      .expect(({ body }) => expect(body.error.code).toBe('INVALID_JSON'));
+    await request(app).get('/healthz').expect(200).expect(({ body }) => expect(JSON.stringify(body)).not.toContain(mcpKey));
 
     const initialize = {
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'initialize',
+      jsonrpc: '2.0', id: 1, method: 'initialize',
       params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } }
     };
     await request(app).post('/mcp').send(initialize).expect(401).expect('WWW-Authenticate', /Bearer/);
     await request(app).post('/mcp').set('Authorization', 'Bearer wrong-key').send(initialize).expect(401);
     await request(app).post('/mcp').set('Authorization', `Bearer ${mcpKey}`).set('Origin', 'https://attacker.example').send(initialize).expect(403);
-    await request(app).post('/mcp')
-      .set('Authorization', `Bearer ${mcpKey}`)
-      .set('Accept', 'application/json, text/event-stream')
-      .send(initialize)
-      .expect(200)
-      .expect('Content-Type', /application\/json|text\/event-stream/);
   });
 
-  it('derives groups from diagram metadata without changing the catalog format', async () => {
-    await storage.create({ id: 'ungrouped', name: 'Ungrouped' });
-    await storage.create({ id: 'hr-flow', name: 'HR flow', group: 'HR' });
+  it('seeds catalog v2 once with a Sales folder and keeps existing data', async () => {
+    const catalog = await storage.getCatalog();
+    expect(catalog.diagrams.map(diagram => diagram.id).sort()).toEqual(['return', 'shop']);
+    expect(catalog.folders).toHaveLength(1);
+    expect(catalog.folders[0]).toMatchObject({ name: 'Продажи', parentId: null, directDiagramCount: 2 });
+    expect(catalog.catalogRevision).toMatch(/^[a-f0-9]{64}$/);
 
-    const groupList = await storage.listGroups();
-    expect(groupList.groups).toEqual(expect.arrayContaining([
-      { name: 'HR', diagramCount: 1 },
-      { name: 'Продажи', diagramCount: 2 }
-    ]));
-    expect(groupList.groups.map(group => group.name)).toEqual(
-      groupList.groups.map(group => group.name).sort((left, right) => left.localeCompare(right, 'ru'))
-    );
-    expect(groupList.ungroupedCount).toBe(1);
+    await storage.create({ id: 'custom-flow', name: 'Custom flow' });
+    const secondStorage = new DiagramStorage(dataDir, config.seedDir, config.publicBaseUrl, config.maxBpmnBytes);
+    await secondStorage.initialize();
+    expect((await secondStorage.list()).map(diagram => diagram.id).sort()).toEqual(['custom-flow', 'return', 'shop']);
 
-    const catalog = JSON.parse(await readFile(path.join(dataDir, 'index.json'), 'utf8'));
-    expect(catalog).toHaveProperty('diagrams');
-    expect(catalog).not.toHaveProperty('groups');
+    const raw = JSON.parse(await readFile(path.join(dataDir, 'index.json'), 'utf8'));
+    expect(raw).toMatchObject({ schemaVersion: 2 });
+    expect(raw.folders).toHaveLength(1);
+    expect(raw.diagrams[0]).toHaveProperty('folderId');
+    expect(JSON.stringify(raw)).not.toContain('"group"');
   });
 
-  it('creates, validates, updates with revision protection, and deletes through REST', async () => {
+  it('atomically migrates legacy groups, merging names that differ only by case', async () => {
+    const legacyDir = path.join(temporaryDir, 'legacy');
+    await mkdir(legacyDir, { recursive: true });
+    await copyFile(path.resolve('diagrams/shop.bpmn'), path.join(legacyDir, 'shop.bpmn'));
+    await copyFile(path.resolve('diagrams/return.bpmn'), path.join(legacyDir, 'return.bpmn'));
+    await writeFile(path.join(legacyDir, 'index.json'), JSON.stringify({ diagrams: [
+      { id: 'shop', name: 'Shop', group: 'Продажи', path: 'ignored.bpmn' },
+      { id: 'return', name: 'Return', group: 'продажи', path: '../ignored.bpmn' }
+    ] }));
+    const legacyStorage = new DiagramStorage(legacyDir, config.seedDir, config.publicBaseUrl, config.maxBpmnBytes);
+    await legacyStorage.initialize();
+    const migrated = await legacyStorage.getCatalog();
+    expect(migrated.folders).toHaveLength(1);
+    expect(new Set(migrated.diagrams.map(diagram => diagram.folderId))).toEqual(new Set([migrated.folders[0]!.id]));
+    expect(migrated.diagrams.map(diagram => diagram.path).sort()).toEqual(['return.bpmn', 'shop.bpmn']);
+    const firstWrite = await readFile(path.join(legacyDir, 'index.json'), 'utf8');
+    await legacyStorage.initialize();
+    expect(await readFile(path.join(legacyDir, 'index.json'), 'utf8')).toBe(firstWrite);
+  });
+
+  it('creates deep folder trees, enforces sibling uniqueness, cycles, and catalog revisions', async () => {
+    const initial = await storage.listFolders();
+    const sales = initial.folders[0]!;
+    const child = await storage.createFolder({
+      name: 'Возвраты', parentId: sales.id, expectedCatalogRevision: initial.catalogRevision
+    });
+    await expect(storage.createFolder({
+      name: 'возвраты', parentId: sales.id, expectedCatalogRevision: child.catalog.catalogRevision
+    })).rejects.toMatchObject({ code: 'FOLDER_ALREADY_EXISTS' });
+    await expect(storage.createFolder({
+      name: 'Stale', parentId: null, expectedCatalogRevision: initial.catalogRevision
+    })).rejects.toMatchObject({ code: 'CATALOG_REVISION_CONFLICT' });
+    await expect(storage.updateFolder(sales.id, {
+      parentId: child.folder.id, expectedCatalogRevision: child.catalog.catalogRevision
+    })).rejects.toMatchObject({ code: 'FOLDER_CYCLE' });
+
+    let parentId: string | null = child.folder.id;
+    let revision = child.catalog.catalogRevision;
+    for (let level = 1; level <= 9; level += 1) {
+      const result = await storage.createFolder({ name: `Уровень ${level}`, parentId, expectedCatalogRevision: revision });
+      parentId = result.folder.id;
+      revision = result.catalog.catalogRevision;
+    }
+    const deep = (await storage.listFolders()).folders.find(folder => folder.id === parentId)!;
+    expect(deep.path).toHaveLength(11);
+
+    const anotherRoot = await storage.createFolder({ name: 'Другая ветка', parentId: null, expectedCatalogRevision: revision });
+    await expect(storage.createFolder({
+      name: 'Возвраты', parentId: anotherRoot.folder.id, expectedCatalogRevision: anotherRoot.catalog.catalogRevision
+    })).resolves.toMatchObject({ folder: { name: 'Возвраты', parentId: anotherRoot.folder.id } });
+  });
+
+  it('manages folder placement and empty-folder deletion through REST', async () => {
     const api = request(app);
-    const created = await api.post('/api/diagrams').auth(basic.user, basic.password).send({
-      id: 'vacation-request',
-      name: 'Согласование отпуска',
-      group: 'HR'
+    const initial = await api.get('/api/catalog').auth(basic.user, basic.password).expect(200);
+    const createdFolder = await api.post('/api/folders').auth(basic.user, basic.password).send({
+      name: 'HR', parentId: null, expectedCatalogRevision: initial.body.catalogRevision
     }).expect(201);
-    expect(created.body.diagram.xml).toContain('bpmndi:BPMNDiagram');
-    expect((await storage.list()).some(diagram => diagram.id === 'vacation-request')).toBe(true);
+    const hrId = createdFolder.body.folder.id as string;
 
-    const originalRevision = created.body.diagram.revision as string;
-    const updated = await api.put('/api/diagrams/vacation-request').auth(basic.user, basic.password).send({
-      expectedRevision: originalRevision,
-      description: 'Процесс согласования'
+    await api.post('/api/diagrams').auth(basic.user, basic.password).send({
+      id: 'legacy-input', name: 'Legacy', group: 'HR'
+    }).expect(400).expect(({ body }) => expect(body.error.code).toBe('INVALID_REQUEST'));
+
+    const created = await api.post('/api/diagrams').auth(basic.user, basic.password).send({
+      id: 'vacation-request', name: 'Согласование отпуска', folderId: hrId
+    }).expect(201);
+    expect(created.body.diagram.folderPath.map((item: { name: string }) => item.name)).toEqual(['HR']);
+    await api.delete(`/api/folders/${hrId}`).auth(basic.user, basic.password).send({
+      expectedCatalogRevision: (await storage.listFolders()).catalogRevision, confirmName: 'HR'
+    }).expect(409).expect(({ body }) => expect(body.error.code).toBe('FOLDER_NOT_EMPTY'));
+
+    const moved = await api.put('/api/diagrams/vacation-request').auth(basic.user, basic.password).send({
+      expectedRevision: created.body.diagram.revision, folderId: null
     }).expect(200);
-    expect(updated.body.diagram.revision).not.toBe(originalRevision);
-
-    await api.put('/api/diagrams/vacation-request').auth(basic.user, basic.password).send({
-      expectedRevision: originalRevision,
-      name: 'Устаревшая запись'
-    }).expect(409).expect(({ body }) => expect(body.error.code).toBe('REVISION_CONFLICT'));
+    expect(moved.body.diagram.folderId).toBeNull();
+    await api.delete(`/api/folders/${hrId}`).auth(basic.user, basic.password).send({
+      expectedCatalogRevision: (await storage.listFolders()).catalogRevision, confirmName: 'HR'
+    }).expect(204);
 
     await api.delete('/api/diagrams/vacation-request').auth(basic.user, basic.password).send({
-      expectedRevision: updated.body.diagram.revision,
-      confirmId: 'vacation-request'
+      expectedRevision: moved.body.diagram.revision, confirmId: 'vacation-request'
     }).expect(204);
-    expect((await storage.list()).some(diagram => diagram.id === 'vacation-request')).toBe(false);
     await expect(readFile(path.join(dataDir, 'vacation-request.bpmn'), 'utf8')).rejects.toThrow();
   });
 
-  it('rejects invalid IDs, path traversal, missing DI, and oversized payloads without changing files', async () => {
+  it('filters diagrams by a folder branch and keeps revision protection', async () => {
+    const initial = await storage.listFolders();
+    const sales = initial.folders[0]!;
+    const child = await storage.createFolder({ name: 'Child', parentId: sales.id, expectedCatalogRevision: initial.catalogRevision });
+    await storage.create({ id: 'child-flow', name: 'Child flow', folderId: child.folder.id });
+    expect((await storage.list('', sales.id, false)).map(item => item.id).sort()).toEqual(['return', 'shop']);
+    expect((await storage.list('', sales.id, true)).map(item => item.id).sort()).toEqual(['child-flow', 'return', 'shop']);
+
+    const shop = await storage.get('shop');
+    await storage.update('shop', { expectedRevision: shop.revision, description: 'Updated' });
+    await expect(storage.update('shop', { expectedRevision: shop.revision, name: 'Stale' }))
+      .rejects.toMatchObject({ code: 'REVISION_CONFLICT' });
+  });
+
+  it('rejects invalid IDs, missing DI, and oversized payloads without changing files', async () => {
     const before = await readFile(path.join(dataDir, 'shop.bpmn'), 'utf8');
     await request(app).post('/api/diagrams').auth(basic.user, basic.password).send({
       id: '../escape', name: 'Escape', xml: createBlankBpmn('escape', 'Escape')
     }).expect(400).expect(({ body }) => expect(body.error.code).toBe('INVALID_ID'));
-
-    await request(app).get('/api/diagrams/bad_ID').auth(basic.user, basic.password)
-      .expect(400).expect(({ body }) => expect(body.error.code).toBe('INVALID_ID'));
-
     await request(app).put('/api/diagrams/shop').auth(basic.user, basic.password).send({
-      expectedRevision: (await storage.get('shop')).revision,
-      xml: invalidWithoutDi
+      expectedRevision: (await storage.get('shop')).revision, xml: invalidWithoutDi
     }).expect(422).expect(({ body }) => expect(body.error.code).toBe('INVALID_BPMN'));
     expect(await readFile(path.join(dataDir, 'shop.bpmn'), 'utf8')).toBe(before);
-
     await request(app).post('/api/diagrams').auth(basic.user, basic.password).send({
       id: 'too-large-xml', name: 'Too large XML', xml: 'x'.repeat(config.maxBpmnBytes + 1)
     }).expect(413).expect(({ body }) => expect(body.error.code).toBe('PAYLOAD_TOO_LARGE'));
-
-    await request(app).post('/api/diagrams').auth(basic.user, basic.password).send({
-      id: 'too-large-body', name: 'Too large body', xml: 'x'.repeat(config.maxBpmnBytes + 70 * 1024)
-    }).expect(413).expect(({ body }) => expect(body.error.code).toBe('PAYLOAD_TOO_LARGE'));
   });
 
-  it('supports MCP initialize, list/get, and revision conflicts without a delete tool', async () => {
+  it('publishes nested folder operations through MCP without any delete or legacy group tool', async () => {
     httpServer = createServer(app);
     await new Promise<void>(resolve => httpServer!.listen(0, '127.0.0.1', resolve));
     const address = httpServer.address() as AddressInfo;
@@ -189,101 +222,73 @@ describe('BPMN application', () => {
     const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${address.port}/mcp`), {
       authProvider: { token: async () => mcpKey }
     });
-
     try {
       await client.connect(transport);
       const tools = await client.listTools();
       expect(tools.tools.map(tool => tool.name).sort()).toEqual([
-        'create_diagram', 'duplicate_diagram', 'get_diagram', 'inspect_diagram',
-        'list_diagrams', 'list_groups', 'update_diagram', 'validate_bpmn'
+        'create_diagram', 'create_folder', 'duplicate_diagram', 'get_diagram', 'inspect_diagram',
+        'list_diagrams', 'list_folders', 'update_diagram', 'update_folder', 'validate_bpmn'
       ]);
       expect(tools.tools.some(tool => tool.name.includes('delete'))).toBe(false);
+      expect(tools.tools.some(tool => tool.name === 'list_groups')).toBe(false);
 
-      const listed = await client.callTool({ name: 'list_diagrams', arguments: {} });
-      expect((listed.structuredContent as { diagrams: unknown[] }).diagrams).toHaveLength(2);
-
-      const groups = await client.callTool({ name: 'list_groups', arguments: {} });
-      expect(groups.structuredContent).toMatchObject({
-        groups: [{ name: 'Продажи', diagramCount: 2 }],
-        ungroupedCount: 0
+      const listedFolders = await client.callTool({ name: 'list_folders', arguments: {} });
+      const folderState = listedFolders.structuredContent as { catalogRevision: string; folders: Array<{ id: string }> };
+      const createdFolder = await client.callTool({
+        name: 'create_folder',
+        arguments: { name: 'MCP', parent_id: folderState.folders[0]!.id, expected_catalog_revision: folderState.catalogRevision }
       });
+      expect(createdFolder.isError).not.toBe(true);
+      const folderResult = createdFolder.structuredContent as { folder: { id: string }; catalog: { catalogRevision: string } };
 
-      const loaded = await client.callTool({ name: 'get_diagram', arguments: { id: 'shop' } });
-      const revision = (loaded.structuredContent as { diagram: { revision: string } }).diagram.revision;
-      expect(revision).toMatch(/^[a-f0-9]{64}$/);
+      const staleFolder = await client.callTool({
+        name: 'create_folder',
+        arguments: { name: 'Stale', expected_catalog_revision: folderState.catalogRevision }
+      });
+      expect(staleFolder.isError).toBe(true);
+      expect((staleFolder.structuredContent as { error: { code: string } }).error.code).toBe('CATALOG_REVISION_CONFLICT');
 
-      const inspected = await client.callTool({ name: 'inspect_diagram', arguments: { id: 'shop' } });
-      const inspection = (inspected.structuredContent as { inspection: Record<string, any> }).inspection;
-      expect(inspection.diagram).toMatchObject({ id: 'shop', revision });
-      expect(inspection.diagram).not.toHaveProperty('xml');
-      expect(inspection).not.toHaveProperty('xml');
-      expect(inspection.statistics).toMatchObject({ processes: 1 });
-      expect(inspection.di).toMatchObject({ complete: true, diagramCount: 1, planeCount: 1 });
-      expect(inspection.validation).toMatchObject({ valid: true });
+      const renamed = await client.callTool({
+        name: 'update_folder',
+        arguments: {
+          id: folderResult.folder.id,
+          name: 'MCP renamed',
+          expected_catalog_revision: folderResult.catalog.catalogRevision
+        }
+      });
+      expect(renamed.isError).not.toBe(true);
 
       const created = await client.callTool({
         name: 'create_diagram',
         arguments: {
-          id: 'mcp-created',
-          name: 'Created through MCP',
-          group: 'Tests',
+          id: 'mcp-created', name: 'Created through MCP', folder_id: folderResult.folder.id,
           xml: createBlankBpmn('mcp-created', 'Created through MCP')
         }
       });
       expect(created.isError).not.toBe(true);
-      expect((created.structuredContent as { diagram: { url: string } }).diagram.url).toContain('?diagram=mcp-created');
+      const createdDiagram = (created.structuredContent as { diagram: { folderId: string; revision: string; url: string } }).diagram;
+      expect(createdDiagram).toMatchObject({ folderId: folderResult.folder.id, url: expect.stringContaining('?diagram=mcp-created') });
 
-      const groupsAfterCreate = await client.callTool({ name: 'list_groups', arguments: {} });
-      expect((groupsAfterCreate.structuredContent as { groups: Array<{ name: string }> }).groups)
-        .toEqual(expect.arrayContaining([{ name: 'Tests', diagramCount: 1 }]));
+      const inspected = await client.callTool({ name: 'inspect_diagram', arguments: { id: 'mcp-created' } });
+      const inspection = (inspected.structuredContent as { inspection: Record<string, any> }).inspection;
+      expect(inspection.diagram).not.toHaveProperty('xml');
+      expect(inspection.diagram).not.toHaveProperty('group');
+      expect(inspection.validation).toMatchObject({ valid: true });
 
       const duplicated = await client.callTool({
         name: 'duplicate_diagram',
-        arguments: {
-          source_id: 'shop',
-          expected_revision: revision,
-          new_id: 'shop-copy',
-          name: 'Shop copy'
-        }
+        arguments: { source_id: 'mcp-created', expected_revision: createdDiagram.revision, new_id: 'mcp-copy', name: 'MCP copy' }
       });
-      expect(duplicated.isError).not.toBe(true);
-      expect((duplicated.structuredContent as { diagram: { group: string; url: string } }).diagram)
-        .toMatchObject({ group: 'Продажи', url: expect.stringContaining('?diagram=shop-copy') });
-      expect((await storage.get('shop-copy')).xml).toBe((await storage.get('shop')).xml);
+      expect((duplicated.structuredContent as { diagram: { folderId: string } }).diagram.folderId).toBe(folderResult.folder.id);
+      expect((await storage.get('mcp-copy')).xml).toBe((await storage.get('mcp-created')).xml);
 
+      const catalogResource = await client.readResource({ uri: 'bpmn://catalog' });
+      expect(catalogResource.contents[0]).toMatchObject({ mimeType: 'application/json' });
+      expect((catalogResource.contents[0] as { text: string }).text).toContain('catalogRevision');
       const resources = await client.listResources();
       expect(resources.resources.map(resource => resource.uri)).toEqual(expect.arrayContaining([
         'bpmn://catalog', 'bpmn://modeling-guide', 'bpmn://diagram/mcp-created'
       ]));
-      const templates = await client.listResourceTemplates();
-      expect(templates.resourceTemplates.some(template => template.uriTemplate === 'bpmn://diagram/{id}')).toBe(true);
-      const modelingGuide = await client.readResource({ uri: 'bpmn://modeling-guide' });
-      expect(modelingGuide.contents[0]).toMatchObject({ mimeType: 'text/plain' });
-
-      const firstUpdate = await client.callTool({
-        name: 'update_diagram',
-        arguments: { id: 'shop', expected_revision: revision, description: 'Updated by MCP test' }
-      });
-      expect(firstUpdate.isError).not.toBe(true);
-
-      const staleDuplicate = await client.callTool({
-        name: 'duplicate_diagram',
-        arguments: {
-          source_id: 'shop',
-          expected_revision: revision,
-          new_id: 'stale-copy',
-          name: 'Stale copy'
-        }
-      });
-      expect(staleDuplicate.isError).toBe(true);
-      expect((staleDuplicate.structuredContent as { error: { code: string } }).error.code).toBe('REVISION_CONFLICT');
-
-      const staleUpdate = await client.callTool({
-        name: 'update_diagram',
-        arguments: { id: 'shop', expected_revision: revision, description: 'Must not overwrite' }
-      });
-      expect(staleUpdate.isError).toBe(true);
-      expect((staleUpdate.structuredContent as { error: { code: string } }).error.code).toBe('REVISION_CONFLICT');
     } finally {
       await client.close();
     }

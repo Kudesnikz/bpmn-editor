@@ -4,13 +4,13 @@
 
 ## Возможности
 
-- каталог, поиск и группировка диаграмм;
-- ручное редактирование на `bpmn-js`, undo/redo, zoom и PNG-экспорт;
+- каталог с вложенными папками, поиск и перемещение диаграмм;
+- ручное редактирование на `bpmn-js`, undo/redo, zoom, PNG-экспорт и копирование PNG в буфер обмена;
 - создание, свойства, дублирование и безопасное удаление;
 - атомарные записи и optimistic locking по SHA-256 `revision`;
 - строгая проверка BPMN XML и BPMN DI через `bpmn-moddle`;
 - Streamable HTTP MCP на едином endpoint `/mcp`;
-- MCP tools: `list_diagrams`, `list_groups`, `get_diagram`, `inspect_diagram`, `validate_bpmn`, `create_diagram`, `update_diagram`, `duplicate_diagram`;
+- MCP tools: `list_diagrams`, `list_folders`, `get_diagram`, `inspect_diagram`, `validate_bpmn`, `create_diagram`, `update_diagram`, `duplicate_diagram`, `create_folder`, `update_folder`;
 - MCP resources: `bpmn://catalog`, `bpmn://diagram/{id}`, `bpmn://modeling-guide`;
 - один production-контейнер на Node.js 22, запуск от непривилегированного пользователя.
 
@@ -59,6 +59,8 @@ Volume `bpmn_diagrams` монтируется в `/data/diagrams`:
 ```
 
 Два примера копируются только если `index.json` ещё не существует. Приложение не ведёт историю и не создаёт резервные копии: настройте внешний backup volume.
+
+Каталог хранится в формате v2: папки имеют стабильные серверные ID и `parentId`, а диаграммы ссылаются на них через `folderId`. Старый каталог со строковым полем `group` автоматически и атомарно мигрирует при запуске. Удаление папок доступно только в веб-интерфейсе и только для пустых папок.
 
 ## Подключение Codex
 

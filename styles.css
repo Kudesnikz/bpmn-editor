@@ -37,6 +37,7 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -62,6 +63,7 @@ button:disabled {
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
@@ -267,17 +269,68 @@ body.sidebar-collapsed .sidebar {
   padding: 2px 8px 12px;
 }
 
-.diagram-group + .diagram-group {
-  margin-top: 12px;
+.folder-node {
+  min-width: 0;
 }
 
-.diagram-group-title {
-  margin: 0 6px 5px;
+.folder-node + .folder-node {
+  margin-top: 3px;
+}
+
+.folder-row {
+  min-height: 34px;
+  padding: 2px 3px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: var(--muted);
-  font-size: 11px;
+}
+
+.root-folder > .folder-row {
+  padding-left: 9px;
+}
+
+.folder-toggle,
+.folder-action {
+  min-height: 28px;
+  width: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.folder-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .05em;
+}
+
+.folder-count {
+  min-width: 19px;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #eef1f4;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.folder-contents {
+  margin-left: 13px;
+  padding-left: 7px;
+  border-left: 1px solid var(--border-soft);
+}
+
+.root-folder > .folder-contents {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
 }
 
 .diagram-item {
@@ -538,6 +591,16 @@ body.sidebar-collapsed .sidebar {
   }
 }
 
+.sidebar-footer > div {
+  display: flex;
+  gap: 6px;
+}
+
+.sidebar-footer .text-button {
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
 /* Self-hosted editor additions */
 .storage-badge {
   display: inline-flex;
@@ -720,6 +783,7 @@ body.sidebar-collapsed .sidebar {
 }
 
 .field input,
+.field select,
 .field textarea {
   width: 100%;
   min-height: 42px;
@@ -732,6 +796,7 @@ body.sidebar-collapsed .sidebar {
 }
 
 .field input:focus,
+.field select:focus,
 .field textarea:focus {
   border-color: var(--accent);
 }
@@ -752,6 +817,15 @@ body.sidebar-collapsed .sidebar {
 
 .compact-dialog {
   width: min(520px, calc(100% - 32px));
+}
+
+.folder-delete-area {
+  margin-top: 16px;
+  padding-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid var(--border-soft);
 }
 
 .warning-note {
@@ -920,6 +994,7 @@ body.sidebar-collapsed .sidebar {
   .storage-badge,
   .actions #copy-link,
   .actions #export-png,
+  .actions #copy-png,
   .actions #reload {
     display: none;
   }

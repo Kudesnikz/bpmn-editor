@@ -22,7 +22,8 @@ export const BPMN_SKILL_MARKDOWN = [
   '',
   'Use the configured `bpmn` MCP server as the source of truth.',
   '',
-  '- Before creating, call `list_groups` and `list_diagrams`. A new non-empty `group` value creates that group implicitly.',
+  '- Before creating, call `list_folders` and `list_diagrams`. If the required folder is missing, create it explicitly with `create_folder` and the exact catalog revision.',
+  '- Use stable folder IDs from `list_folders`; place or move diagrams with `folder_id`. Use `update_folder` to rename or move folders.',
   '- Before updating or duplicating, call `get_diagram` and use its exact revision. Use `inspect_diagram` when a compact structural view helps.',
   '- Preserve existing BPMN element IDs when their business meaning is unchanged.',
   '- Include complete BPMN DI. Prefer a readable left-to-right layout with minimal crossings.',
@@ -30,7 +31,7 @@ export const BPMN_SKILL_MARKDOWN = [
   '- For complex changes, call `validate_bpmn` before writing. Treat errors as blockers and review warnings.',
   '- On a revision conflict, reload the diagram and reconcile changes instead of overwriting blindly.',
   '- After create, update, or duplicate, return the editor URL.',
-  '- Never attempt to delete a diagram through MCP.'
+  '- Never attempt to delete a diagram or folder through MCP.'
 ].join('\n');
 
 export const BPMN_SKILL_CREATOR_PROMPT = [
@@ -41,13 +42,14 @@ export const BPMN_SKILL_CREATOR_PROMPT = [
   'Не добавляй scripts, references, assets или README.',
   '',
   'Закрепи в skill следующие правила:',
-  '1. Перед созданием читать `list_groups` и `list_diagrams`; новая непустая строка `group` создаёт группу автоматически.',
-  '2. Перед обновлением или дублированием вызывать `get_diagram` и использовать точную revision; для компактного анализа применять `inspect_diagram`.',
-  '3. Сохранять BPMN element ID, если бизнес-смысл элемента не изменился.',
-  '4. Всегда включать полный BPMN DI и строить читаемую схему слева направо с минимумом пересечений.',
-  '5. Использовать lanes для ролей одного процесса, pools для независимых участников, sequence flow только внутри процесса и message flow только между разными participants.',
-  '6. Перед сложной записью вызывать `validate_bpmn`; ошибки блокируют запись, warnings нужно проверить.',
-  '7. При конфликте revision перечитать диаграмму и согласовать изменения, не перезаписывая их вслепую.',
-  '8. После создания, обновления или дублирования возвращать ссылку редактора.',
-  '9. Никогда не пытаться удалять диаграммы через MCP.'
+  '1. Перед созданием читать `list_folders` и `list_diagrams`; отсутствующую папку создавать явно через `create_folder` с точной `catalogRevision`.',
+  '2. Использовать стабильные ID папок из `list_folders`; размещать диаграммы через `folder_id`, а папки переименовывать и переносить через `update_folder`.',
+  '3. Перед обновлением или дублированием вызывать `get_diagram` и использовать точную revision; для компактного анализа применять `inspect_diagram`.',
+  '4. Сохранять BPMN element ID, если бизнес-смысл элемента не изменился.',
+  '5. Всегда включать полный BPMN DI и строить читаемую схему слева направо с минимумом пересечений.',
+  '6. Использовать lanes для ролей одного процесса, pools для независимых участников, sequence flow только внутри процесса и message flow только между разными participants.',
+  '7. Перед сложной записью вызывать `validate_bpmn`; ошибки блокируют запись, warnings нужно проверить.',
+  '8. При конфликте revision перечитать диаграмму или каталог и согласовать изменения, не перезаписывая их вслепую.',
+  '9. После создания, обновления или дублирования возвращать ссылку редактора.',
+  '10. Никогда не пытаться удалять диаграммы или папки через MCP.'
 ].join('\n');

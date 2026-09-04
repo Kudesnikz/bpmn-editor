@@ -10,15 +10,18 @@ const elements = {
   status: $('status'), name: $('model-name'), description: $('model-description'), path: $('model-path'), revision: $('model-revision'),
   dirty: $('dirty-badge'), list: $('diagram-list'), count: $('diagram-count'), search: $('diagram-search'), sidebar: $('sidebar'),
   backdrop: $('sidebar-backdrop'), empty: $('empty-state'), save: $('save'), metadata: $('metadata'), duplicate: $('duplicate'),
-  delete: $('delete'), copyLink: $('copy-link'), exportPng: $('export-png'), undo: $('undo'), redo: $('redo')
+  delete: $('delete'), copyLink: $('copy-link'), exportPng: $('export-png'), copyPng: $('copy-png'), undo: $('undo'), redo: $('redo')
 };
 
 let diagrams = [];
+let folders = [];
+let catalogRevision = '';
 let currentDiagram = null;
 let isLoading = false;
 let isSaving = false;
 let hasLocalChanges = false;
 let serverConfig = null;
+const expandedFolders = new Set(JSON.parse(localStorage.getItem('bpmn-expanded-folders') || '[]'));
 
 function setStatus(message) { elements.status.textContent = message; }
 
@@ -40,6 +43,8 @@ async function apiFetch(path, options = {}) {
 }
 
 function isMobileLayout() { return window.matchMedia('(max-width: 900px)').matches; }
+function openDialog(dialog) { typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', ''); }
+function closeDialog(dialog) { typeof dialog.close === 'function' ? dialog.close() : dialog.removeAttribute('open'); }
 
 function setSidebarCollapsed(collapsed, { remember = true } = {}) {
   document.body.classList.toggle('sidebar-collapsed', collapsed);
@@ -59,7 +64,7 @@ function setDirty(value) {
 
 function setDiagramControls(enabled) {
   elements.save.disabled = !enabled || isLoading || isSaving;
-  for (const element of [elements.metadata, elements.duplicate, elements.delete, elements.copyLink, elements.exportPng]) element.disabled = !enabled;
+  for (const element of [elements.metadata, elements.duplicate, elements.delete, elements.copyLink, elements.exportPng, elements.copyPng]) element.disabled = !enabled;
 }
 
 function updateHistoryButtons() {
@@ -76,7 +81,102 @@ function setUrlDiagram(id) {
 }
 
 function searchableText(diagram) {
-  return [diagram.id, diagram.name, diagram.group, diagram.description].filter(Boolean).join(' ').toLocaleLowerCase('ru');
+  return [diagram.id, diagram.name, diagram.description, ...(diagram.folderPath || []).map(item => item.name)]
+    .filter(Boolean).join(' ').toLocaleLowerCase('ru');
+}
+
+function rememberExpandedFolders() {
+  localStorage.setItem('bpmn-expanded-folders', JSON.stringify([...expandedFolders]));
+}
+
+function renderDiagramItem(diagram) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `diagram-item${diagram.id === currentDiagram?.id ? ' active' : ''}`;
+  button.dataset.diagramId = diagram.id;
+  button.setAttribute('aria-current', diagram.id === currentDiagram?.id ? 'page' : 'false');
+  const name = document.createElement('span');
+  name.className = 'diagram-item-name';
+  name.textContent = diagram.name;
+  button.appendChild(name);
+  if (diagram.description) {
+    const description = document.createElement('span');
+    description.className = 'diagram-item-description';
+    description.textContent = diagram.description;
+    button.appendChild(description);
+  }
+  button.addEventListener('click', () => void selectDiagram(diagram.id));
+  return button;
+}
+
+function renderRootSection(rootDiagrams, query) {
+  if (!rootDiagrams.length && query) return;
+  const section = document.createElement('section');
+  section.className = 'folder-node root-folder';
+  const title = document.createElement('div');
+  title.className = 'folder-row';
+  const label = document.createElement('span');
+  label.className = 'folder-name';
+  label.textContent = 'Без папки';
+  const count = document.createElement('span');
+  count.className = 'folder-count';
+  count.textContent = String(rootDiagrams.length);
+  title.append(label, count);
+  section.appendChild(title);
+  const content = document.createElement('div');
+  content.className = 'folder-contents';
+  for (const diagram of rootDiagrams) content.appendChild(renderDiagramItem(diagram));
+  section.appendChild(content);
+  elements.list.appendChild(section);
+}
+
+function renderFolderNode(folder, parentContainer, directDiagrams, childFolders, query) {
+  const node = document.createElement('section');
+  node.className = 'folder-node';
+  node.dataset.folderId = folder.id;
+  const row = document.createElement('div');
+  row.className = 'folder-row';
+  const expanded = Boolean(query) || expandedFolders.has(folder.id);
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'folder-toggle';
+  toggle.textContent = expanded ? '▾' : '▸';
+  toggle.setAttribute('aria-label', expanded ? 'Свернуть папку' : 'Развернуть папку');
+  const name = document.createElement('span');
+  name.className = 'folder-name';
+  name.textContent = folder.name;
+  name.title = folder.path.map(item => item.name).join(' / ');
+  const count = document.createElement('span');
+  count.className = 'folder-count';
+  count.textContent = String(folder.totalDiagramCount);
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'folder-action';
+  add.textContent = '+';
+  add.title = 'Создать дочернюю папку';
+  add.setAttribute('aria-label', `Создать папку внутри ${folder.name}`);
+  const menu = document.createElement('button');
+  menu.type = 'button';
+  menu.className = 'folder-action';
+  menu.textContent = '⋯';
+  menu.title = 'Действия с папкой';
+  menu.setAttribute('aria-label', `Действия с папкой ${folder.name}`);
+  row.append(toggle, name, count, add, menu);
+  node.appendChild(row);
+  const content = document.createElement('div');
+  content.className = 'folder-contents';
+  content.hidden = !expanded;
+  for (const diagram of directDiagrams) content.appendChild(renderDiagramItem(diagram));
+  node.appendChild(content);
+  parentContainer.appendChild(node);
+  toggle.addEventListener('click', () => {
+    if (expandedFolders.has(folder.id)) expandedFolders.delete(folder.id); else expandedFolders.add(folder.id);
+    rememberExpandedFolders();
+    renderCatalog();
+  });
+  add.addEventListener('click', () => openFolderDialog('create', folder.id));
+  menu.addEventListener('click', () => openFolderDialog('edit', folder.id));
+  return { content, children: childFolders };
 }
 
 function renderCatalog() {
@@ -84,53 +184,59 @@ function renderCatalog() {
   const filtered = query ? diagrams.filter(diagram => searchableText(diagram).includes(query)) : diagrams;
   elements.count.textContent = query ? `${filtered.length} / ${diagrams.length}` : String(diagrams.length);
   elements.list.replaceChildren();
-  if (!filtered.length) {
+
+  const byFolder = new Map();
+  for (const diagram of filtered) {
+    const key = diagram.folderId || '';
+    if (!byFolder.has(key)) byFolder.set(key, []);
+    byFolder.get(key).push(diagram);
+  }
+  for (const list of byFolder.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  const visibleFolders = new Set();
+  if (query) {
+    for (const diagram of filtered) for (const segment of diagram.folderPath || []) visibleFolders.add(segment.id);
+    for (const folder of folders) {
+      if (folder.path.map(item => item.name).join(' ').toLocaleLowerCase('ru').includes(query)) {
+        for (const segment of folder.path) visibleFolders.add(segment.id);
+      }
+    }
+  } else for (const folder of folders) visibleFolders.add(folder.id);
+
+  renderRootSection(byFolder.get('') || [], query);
+  const childrenByParent = new Map();
+  for (const folder of folders) {
+    if (!visibleFolders.has(folder.id)) continue;
+    const key = folder.parentId || '';
+    if (!childrenByParent.has(key)) childrenByParent.set(key, []);
+    childrenByParent.get(key).push(folder);
+  }
+  for (const list of childrenByParent.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+
+  const roots = childrenByParent.get('') || [];
+  const stack = [...roots].reverse().map(folder => ({ folder, parent: elements.list }));
+  while (stack.length) {
+    const { folder, parent } = stack.pop();
+    const children = childrenByParent.get(folder.id) || [];
+    const rendered = renderFolderNode(folder, parent, byFolder.get(folder.id) || [], children, query);
+    for (let index = rendered.children.length - 1; index >= 0; index -= 1) {
+      stack.push({ folder: rendered.children[index], parent: rendered.content });
+    }
+  }
+
+  if (!filtered.length && (!query || !visibleFolders.size)) {
     const empty = document.createElement('div');
     empty.className = 'catalog-empty';
     empty.textContent = diagrams.length ? 'Ничего не найдено' : 'Диаграмм пока нет';
     elements.list.appendChild(empty);
-    return;
-  }
-  const grouped = new Map();
-  for (const diagram of filtered) {
-    const group = diagram.group || 'Без группы';
-    if (!grouped.has(group)) grouped.set(group, []);
-    grouped.get(group).push(diagram);
-  }
-  for (const [groupName, groupDiagrams] of grouped) {
-    const section = document.createElement('section');
-    section.className = 'diagram-group';
-    const title = document.createElement('h3');
-    title.className = 'diagram-group-title';
-    title.textContent = groupName;
-    section.appendChild(title);
-    for (const diagram of groupDiagrams) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `diagram-item${diagram.id === currentDiagram?.id ? ' active' : ''}`;
-      button.dataset.diagramId = diagram.id;
-      button.setAttribute('aria-current', diagram.id === currentDiagram?.id ? 'page' : 'false');
-      const name = document.createElement('span');
-      name.className = 'diagram-item-name';
-      name.textContent = diagram.name;
-      button.appendChild(name);
-      if (diagram.description) {
-        const description = document.createElement('span');
-        description.className = 'diagram-item-description';
-        description.textContent = diagram.description;
-        button.appendChild(description);
-      }
-      button.addEventListener('click', () => void selectDiagram(diagram.id));
-      section.appendChild(button);
-    }
-    elements.list.appendChild(section);
   }
 }
 
 function renderDiagramMeta() {
   elements.name.textContent = currentDiagram?.name || 'Нет открытой диаграммы';
   elements.description.textContent = currentDiagram?.description || '';
-  elements.path.textContent = currentDiagram?.path || '';
+  const folderPath = currentDiagram?.folderPath?.map(item => item.name).join(' / ');
+  elements.path.textContent = currentDiagram ? `${folderPath ? `${folderPath} / ` : ''}${currentDiagram.path}` : '';
   elements.revision.textContent = currentDiagram ? `rev ${currentDiagram.revision.slice(0, 8)}` : '';
   elements.empty.hidden = Boolean(currentDiagram);
   $('canvas').hidden = !currentDiagram;
@@ -139,9 +245,15 @@ function renderDiagramMeta() {
 }
 
 async function loadCatalog() {
-  const response = await apiFetch('/api/diagrams');
+  const response = await apiFetch('/api/catalog');
   diagrams = response.diagrams || [];
-  renderCatalog();
+  folders = response.folders || [];
+  catalogRevision = response.catalogRevision;
+  const refreshedCurrent = currentDiagram && diagrams.find(diagram => diagram.id === currentDiagram.id);
+  if (refreshedCurrent?.revision === currentDiagram.revision) {
+    currentDiagram = { ...currentDiagram, ...refreshedCurrent };
+    renderDiagramMeta();
+  } else renderCatalog();
 }
 
 async function loadDiagram(id, { updateUrl = true } = {}) {
@@ -217,8 +329,21 @@ async function saveCurrentDiagram() {
   }
 }
 
-function openDialog(dialog) { typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', ''); }
-function closeDialog(dialog) { typeof dialog.close === 'function' ? dialog.close() : dialog.removeAttribute('open'); }
+function populateFolderSelect(select, selectedId = null, excludedIds = new Set()) {
+  select.replaceChildren();
+  const root = document.createElement('option');
+  root.value = '';
+  root.textContent = 'Без папки / корень';
+  select.appendChild(root);
+  for (const folder of folders) {
+    if (excludedIds.has(folder.id)) continue;
+    const option = document.createElement('option');
+    option.value = folder.id;
+    option.textContent = `${'— '.repeat(Math.max(0, folder.path.length - 1))}${folder.name}`;
+    select.appendChild(option);
+  }
+  select.value = selectedId || '';
+}
 
 function openDiagramDialog(mode) {
   const idField = $('diagram-id');
@@ -231,21 +356,24 @@ function openDiagramDialog(mode) {
     $('diagram-dialog-description').textContent = 'Сервер подготовит валидный процесс со стартовым событием и BPMN DI.';
     $('diagram-submit').textContent = 'Создать';
     $('diagram-form-hint').textContent = 'ID станет частью прямой ссылки и не меняется после создания.';
-    idField.value = ''; $('diagram-name').value = ''; $('diagram-group').value = ''; $('diagram-description').value = '';
+    idField.value = ''; $('diagram-name').value = ''; $('diagram-description').value = '';
+    populateFolderSelect($('diagram-folder'));
   } else if (mode === 'edit') {
     $('diagram-dialog-kicker').textContent = 'Метаданные';
     $('diagram-dialog-title').textContent = 'Свойства диаграммы';
-    $('diagram-dialog-description').textContent = 'Измените название, группу или описание. Стабильный ID останется прежним.';
+    $('diagram-dialog-description').textContent = 'Измените название, папку или описание. Стабильный ID останется прежним.';
     $('diagram-submit').textContent = 'Сохранить свойства';
     $('diagram-form-hint').textContent = 'Изменение свойств также создаёт новую ревизию.';
-    idField.value = currentDiagram.id; $('diagram-name').value = currentDiagram.name; $('diagram-group').value = currentDiagram.group || ''; $('diagram-description').value = currentDiagram.description || '';
+    idField.value = currentDiagram.id; $('diagram-name').value = currentDiagram.name; $('diagram-description').value = currentDiagram.description || '';
+    populateFolderSelect($('diagram-folder'), currentDiagram.folderId);
   } else {
     $('diagram-dialog-kicker').textContent = 'Дублирование';
     $('diagram-dialog-title').textContent = 'Создать копию';
     $('diagram-dialog-description').textContent = 'BPMN XML копируется в новый независимый файл.';
     $('diagram-submit').textContent = 'Создать копию';
     $('diagram-form-hint').textContent = 'Внутренние BPMN element ID можно оставить прежними: файлы независимы.';
-    idField.value = `${currentDiagram.id}-copy`; $('diagram-name').value = `${currentDiagram.name} — копия`; $('diagram-group').value = currentDiagram.group || ''; $('diagram-description').value = currentDiagram.description || '';
+    idField.value = `${currentDiagram.id}-copy`; $('diagram-name').value = `${currentDiagram.name} — копия`; $('diagram-description').value = currentDiagram.description || '';
+    populateFolderSelect($('diagram-folder'), currentDiagram.folderId);
   }
   openDialog($('diagram-dialog'));
   setTimeout(() => (mode === 'edit' ? $('diagram-name') : idField).focus(), 0);
@@ -254,14 +382,19 @@ function openDiagramDialog(mode) {
 async function submitDiagramForm(event) {
   event.preventDefault();
   const mode = $('diagram-mode').value;
-  const payload = { id: $('diagram-id').value.trim(), name: $('diagram-name').value.trim(), group: $('diagram-group').value.trim(), description: $('diagram-description').value.trim() };
+  const payload = {
+    id: $('diagram-id').value.trim(),
+    name: $('diagram-name').value.trim(),
+    folderId: $('diagram-folder').value || null,
+    description: $('diagram-description').value.trim()
+  };
   const button = $('diagram-submit');
   button.disabled = true;
   try {
     let result;
     if (mode === 'edit') {
       result = await apiFetch(`/api/diagrams/${encodeURIComponent(currentDiagram.id)}`, {
-        method: 'PUT', body: JSON.stringify({ expectedRevision: currentDiagram.revision, name: payload.name, group: payload.group, description: payload.description })
+        method: 'PUT', body: JSON.stringify({ expectedRevision: currentDiagram.revision, name: payload.name, folderId: payload.folderId, description: payload.description })
       });
     } else if (mode === 'duplicate') {
       result = await apiFetch(`/api/diagrams/${encodeURIComponent(currentDiagram.id)}/duplicate`, {
@@ -279,6 +412,90 @@ async function submitDiagramForm(event) {
       if (window.confirm('Диаграмма уже изменилась на сервере. Загрузить актуальную версию?')) await refreshCurrent({ discardConfirmed: true });
     } else window.alert(error.message);
   } finally { button.disabled = false; }
+}
+
+function folderAndDescendantIds(folderId) {
+  const ids = new Set([folderId]);
+  const stack = [folderId];
+  while (stack.length) {
+    const parentId = stack.pop();
+    for (const folder of folders) if (folder.parentId === parentId && !ids.has(folder.id)) { ids.add(folder.id); stack.push(folder.id); }
+  }
+  return ids;
+}
+
+function openFolderDialog(mode, folderId = null) {
+  const folder = folders.find(item => item.id === folderId);
+  $('folder-mode').value = mode;
+  $('folder-id').value = folder?.id || '';
+  $('folder-name').value = mode === 'edit' ? folder.name : '';
+  $('folder-dialog-kicker').textContent = mode === 'edit' ? 'Управление папкой' : folder ? 'Дочерняя папка' : 'Корневая папка';
+  $('folder-dialog-title').textContent = mode === 'edit' ? folder.name : 'Создать папку';
+  $('folder-submit').textContent = mode === 'edit' ? 'Сохранить' : 'Создать';
+  $('folder-dialog-description').textContent = mode === 'edit'
+    ? 'Переименуйте папку или выберите нового родителя.'
+    : 'Папка появится в каталоге сразу, даже если пока пуста.';
+  const selectedParent = mode === 'edit' ? folder.parentId : folderId;
+  populateFolderSelect($('folder-parent'), selectedParent, mode === 'edit' ? folderAndDescendantIds(folder.id) : new Set());
+  $('folder-delete-area').hidden = mode !== 'edit';
+  if (mode === 'edit') {
+    const canDelete = folder.directDiagramCount === 0 && folder.childFolderCount === 0;
+    $('folder-delete').disabled = !canDelete;
+    $('folder-delete-hint').textContent = canDelete ? 'Удаление потребует точного имени папки.' : 'Сначала переместите диаграммы и удалите дочерние папки.';
+  }
+  openDialog($('folder-dialog'));
+  setTimeout(() => $('folder-name').focus(), 0);
+}
+
+async function submitFolderForm(event) {
+  event.preventDefault();
+  const mode = $('folder-mode').value;
+  const id = $('folder-id').value;
+  const payload = {
+    name: $('folder-name').value.trim(),
+    parentId: $('folder-parent').value || null,
+    expectedCatalogRevision: catalogRevision
+  };
+  const button = $('folder-submit');
+  button.disabled = true;
+  try {
+    if (mode === 'edit') await apiFetch(`/api/folders/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(payload) });
+    else await apiFetch('/api/folders', { method: 'POST', body: JSON.stringify(payload) });
+    closeDialog($('folder-dialog'));
+    if (mode !== 'edit') expandedFolders.add(payload.parentId || '');
+    await loadCatalog();
+    setStatus(mode === 'edit' ? 'Папка обновлена.' : 'Папка создана.');
+  } catch (error) {
+    if (error.code === 'CATALOG_REVISION_CONFLICT') {
+      closeDialog($('folder-dialog'));
+      await loadCatalog();
+      setStatus('Каталог изменился другим клиентом. Актуальная версия загружена; повторите действие.');
+    } else { setStatus(`Не удалось изменить папку: ${error.message}`); window.alert(error.message); }
+  } finally { button.disabled = false; }
+}
+
+async function deleteFolderFromDialog() {
+  const id = $('folder-id').value;
+  const folder = folders.find(item => item.id === id);
+  if (!folder) return;
+  const confirmName = window.prompt(`Введите точное имя папки «${folder.name}». Удаление через приложение необратимо:`);
+  if (confirmName === null) return;
+  try {
+    await apiFetch(`/api/folders/${encodeURIComponent(id)}`, {
+      method: 'DELETE', body: JSON.stringify({ expectedCatalogRevision: catalogRevision, confirmName })
+    });
+    closeDialog($('folder-dialog'));
+    expandedFolders.delete(id);
+    rememberExpandedFolders();
+    await loadCatalog();
+    setStatus(`Папка «${folder.name}» удалена.`);
+  } catch (error) {
+    if (error.code === 'CATALOG_REVISION_CONFLICT') {
+      closeDialog($('folder-dialog'));
+      await loadCatalog();
+      setStatus('Каталог изменился другим клиентом. Актуальная версия загружена.');
+    } else { setStatus(`Не удалось удалить папку: ${error.message}`); window.alert(error.message); }
+  }
 }
 
 function openDeleteDialog() {
@@ -361,10 +578,13 @@ function wireEvents() {
     if (hasLocalChanges && !window.confirm('Есть несохранённые изменения. Создать новую диаграмму и потерять их?')) return;
     openDiagramDialog('create');
   });
+  $('sidebar-folder-create').addEventListener('click', () => openFolderDialog('create'));
   $('metadata').addEventListener('click', () => hasLocalChanges ? window.alert('Сначала сохраните или отмените локальные изменения.') : openDiagramDialog('edit'));
   $('duplicate').addEventListener('click', () => hasLocalChanges ? window.alert('Сначала сохраните или отмените локальные изменения.') : openDiagramDialog('duplicate'));
   $('delete').addEventListener('click', () => hasLocalChanges ? window.alert('Сначала сохраните или отмените локальные изменения.') : openDeleteDialog());
   $('diagram-form').addEventListener('submit', event => void submitDiagramForm(event));
+  $('folder-form').addEventListener('submit', event => void submitFolderForm(event));
+  $('folder-delete').addEventListener('click', () => void deleteFolderFromDialog());
   $('delete-form').addEventListener('submit', event => void deleteCurrentDiagram(event));
   $('delete-confirm-id').addEventListener('input', () => { $('delete-submit').disabled = $('delete-confirm-id').value !== currentDiagram?.id; });
   document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => closeDialog($(button.dataset.closeDialog))));

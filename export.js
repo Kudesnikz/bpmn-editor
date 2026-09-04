@@ -1,5 +1,6 @@
 export function setupPngExport({ modeler, getCurrentDiagram, setStatus }) {
   const exportPngButton = document.getElementById('export-png');
+  const copyPngButton = document.getElementById('copy-png');
 
   function safeFilename(value) {
     return (value || 'diagram').trim().toLowerCase().replace(/[^a-z0-9а-яё_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'diagram';
@@ -47,46 +48,85 @@ export function setupPngExport({ modeler, getCurrentDiagram, setStatus }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  async function exportPng() {
-    const diagram = getCurrentDiagram();
-    if (!diagram) return;
-    exportPngButton.disabled = true;
-    exportPngButton.textContent = 'PNG…';
-    setStatus(`Экспорт «${diagram.name}»…`);
+  function setBusy(busy, activeButton) {
+    const enabled = Boolean(getCurrentDiagram()) && !busy;
+    exportPngButton.disabled = !enabled;
+    copyPngButton.disabled = !enabled;
+    exportPngButton.textContent = busy && activeButton === exportPngButton ? 'PNG…' : 'PNG';
+    copyPngButton.textContent = busy && activeButton === copyPngButton ? 'Копирование…' : 'Копировать PNG';
+  }
+
+  async function renderPng() {
+    const { svg } = await modeler.saveSVG();
+    const prepared = prepareSvg(svg);
+    const scale = Math.min(2, 8192 / prepared.width, 8192 / prepared.height);
+    const width = Math.max(1, Math.round(prepared.width * scale));
+    const height = Math.max(1, Math.round(prepared.height * scale));
+    const loaded = await loadImage(prepared.svg);
     try {
-      const { svg } = await modeler.saveSVG();
-      const prepared = prepareSvg(svg);
-      const scale = Math.min(2, 8192 / prepared.width, 8192 / prepared.height);
-      const width = Math.max(1, Math.round(prepared.width * scale));
-      const height = Math.max(1, Math.round(prepared.height * scale));
-      const loaded = await loadImage(prepared.svg);
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('Canvas 2D недоступен');
-        context.fillStyle = '#ffffff';
-        context.fillRect(0, 0, width, height);
-        context.drawImage(loaded.image, 0, 0, width, height);
-        download(await canvasBlob(canvas), `${safeFilename(diagram.id)}.png`);
-        setStatus(`PNG экспортирован · ${width}×${height}`);
-      } finally {
-        URL.revokeObjectURL(loaded.objectUrl);
-      }
-    } catch (error) {
-      setStatus(`Не удалось экспортировать PNG: ${error.message}`);
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas 2D недоступен');
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, width, height);
+      context.drawImage(loaded.image, 0, 0, width, height);
+      return { blob: await canvasBlob(canvas), width, height };
     } finally {
-      exportPngButton.disabled = !getCurrentDiagram();
-      exportPngButton.textContent = 'PNG';
+      URL.revokeObjectURL(loaded.objectUrl);
     }
   }
 
-  exportPngButton.addEventListener('click', exportPng);
+  async function exportPng() {
+    const diagram = getCurrentDiagram();
+    if (!diagram) return;
+    setBusy(true, exportPngButton);
+    setStatus(`Экспорт «${diagram.name}»…`);
+    try {
+      const rendered = await renderPng();
+      download(rendered.blob, `${safeFilename(diagram.id)}.png`);
+      setStatus(`PNG экспортирован · ${rendered.width}×${rendered.height}`);
+    } catch (error) {
+      setStatus(`Не удалось экспортировать PNG: ${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyPng() {
+    const diagram = getCurrentDiagram();
+    if (!diagram) return;
+    if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
+      setStatus('Этот браузер не поддерживает копирование PNG в буфер обмена.');
+      return;
+    }
+    setBusy(true, copyPngButton);
+    setStatus(`Подготовка PNG «${diagram.name}» для буфера обмена…`);
+    try {
+      const renderedPromise = renderPng();
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': renderedPromise.then(rendered => rendered.blob) })
+      ]);
+      const rendered = await renderedPromise;
+      setStatus(`PNG скопирован в буфер · ${rendered.width}×${rendered.height}`);
+    } catch (error) {
+      setStatus(`Не удалось скопировать PNG: ${error.message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  exportPngButton.addEventListener('click', () => void exportPng());
+  copyPngButton.addEventListener('click', () => void copyPng());
   document.addEventListener('keydown', event => {
     if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'e') {
       event.preventDefault();
       void exportPng();
+    }
+    if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'c') {
+      event.preventDefault();
+      void copyPng();
     }
   });
 }

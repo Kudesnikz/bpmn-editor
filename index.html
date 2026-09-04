@@ -27,6 +27,7 @@
       <button id="duplicate" type="button" title="Создать копию" disabled>Копия</button>
       <button id="delete" class="danger-ghost" type="button" title="Удалить диаграмму" disabled>Удалить</button>
       <button id="export-png" type="button" title="Экспортировать в PNG (Ctrl/Cmd+Shift+E)" disabled>PNG</button>
+      <button id="copy-png" type="button" title="Скопировать PNG в буфер обмена (Ctrl/Cmd+Shift+C)" disabled>Копировать PNG</button>
       <button id="copy-link" type="button" title="Скопировать прямую ссылку" disabled>Ссылка</button>
       <button id="reload" type="button" title="Получить последнюю версию с сервера">Обновить</button>
       <span class="toolbar-separator" aria-hidden="true"></span>
@@ -49,7 +50,7 @@
         <kbd>⌘K</kbd>
       </label>
       <nav id="diagram-list" class="diagram-list" aria-label="Список диаграмм"><div class="catalog-loading">Загрузка каталога…</div></nav>
-      <div class="sidebar-footer"><span>Хранилище: Docker volume</span><button id="sidebar-create" class="text-button" type="button">+ Новая</button></div>
+      <div class="sidebar-footer"><span>Хранилище: Docker volume</span><div><button id="sidebar-folder-create" class="text-button" type="button">+ Папка</button><button id="sidebar-create" class="text-button" type="button">+ Диаграмма</button></div></div>
     </aside>
     <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
     <main class="workspace">
@@ -79,10 +80,28 @@
       <div class="field-grid">
         <label class="field field-id"><span>ID <small>lowercase kebab-case</small></span><input id="diagram-id" name="id" required maxlength="80" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="vacation-request" spellcheck="false"></label>
         <label class="field"><span>Название</span><input id="diagram-name" name="name" required maxlength="120" placeholder="Согласование отпуска"></label>
-        <label class="field"><span>Группа</span><input id="diagram-group" name="group" maxlength="80" placeholder="HR"></label>
+        <label class="field"><span>Папка</span><select id="diagram-folder" name="folderId"><option value="">Без папки / корень</option></select></label>
         <label class="field field-wide"><span>Описание</span><textarea id="diagram-description" name="description" maxlength="500" rows="3" placeholder="Коротко опишите назначение процесса"></textarea></label>
       </div>
       <div class="dialog-actions"><span id="diagram-form-hint" class="form-hint">ID станет частью прямой ссылки и не меняется после создания.</span><div><button type="button" data-close-dialog="diagram-dialog">Отмена</button><button id="diagram-submit" class="primary-button" type="submit">Создать</button></div></div>
+    </form>
+  </dialog>
+
+  <dialog id="folder-dialog" class="app-dialog compact-dialog">
+    <form id="folder-form" class="dialog-form">
+      <div class="dialog-heading">
+        <div><span id="folder-dialog-kicker" class="dialog-kicker">Корневая папка</span><h2 id="folder-dialog-title">Создать папку</h2><p id="folder-dialog-description">Папка появится в каталоге сразу, даже если пока пуста.</p></div>
+        <button class="icon-button dialog-close" type="button" data-close-dialog="folder-dialog" aria-label="Закрыть">×</button>
+      </div>
+      <input id="folder-mode" type="hidden" value="create">
+      <input id="folder-id" type="hidden">
+      <label class="field"><span>Название папки</span><input id="folder-name" required maxlength="80" placeholder="Возвраты"></label>
+      <label class="field"><span>Родительская папка</span><select id="folder-parent"><option value="">Без папки / корень</option></select></label>
+      <div id="folder-delete-area" class="folder-delete-area" hidden>
+        <button id="folder-delete" class="danger-ghost" type="button">Удалить пустую папку</button>
+        <span id="folder-delete-hint" class="form-hint"></span>
+      </div>
+      <div class="dialog-actions"><span class="form-hint">Имена должны быть уникальны внутри одной родительской папки.</span><div><button type="button" data-close-dialog="folder-dialog">Отмена</button><button id="folder-submit" class="primary-button" type="submit">Создать</button></div></div>
     </form>
   </dialog>
 
@@ -118,15 +137,17 @@
         <div class="section-heading"><div><span class="step-number">3</span><strong>Доступные инструменты</strong></div></div>
         <div class="tool-grid">
           <div><code>list_diagrams</code><span>Каталог, поиск и ревизии</span></div>
-          <div><code>list_groups</code><span>Группы и количество диаграмм</span></div>
+          <div><code>list_folders</code><span>Дерево папок, ID и ревизия каталога</span></div>
           <div><code>get_diagram</code><span>XML, метаданные и ревизия</span></div>
           <div><code>inspect_diagram</code><span>Структура и качество без XML</span></div>
           <div><code>validate_bpmn</code><span>Проверка без сохранения</span></div>
           <div><code>create_diagram</code><span>Создание полной модели</span></div>
           <div><code>update_diagram</code><span>Изменение по актуальной ревизии</span></div>
           <div><code>duplicate_diagram</code><span>Безопасное создание копии</span></div>
+          <div><code>create_folder</code><span>Создание корневой или вложенной папки</span></div>
+          <div><code>update_folder</code><span>Переименование и перенос папки</span></div>
         </div>
-        <p class="security-copy">Удаление через MCP намеренно недоступно. Оно выполняется только человеком в редакторе.</p>
+        <p class="security-copy">Удаление диаграмм и папок через MCP намеренно недоступно. Оно выполняется только человеком в редакторе.</p>
       </section>
       <section class="connection-section skill-section">
         <div class="section-heading"><div><span class="step-number">4</span><strong>Рекомендуемый BPMN Skill</strong></div></div>
