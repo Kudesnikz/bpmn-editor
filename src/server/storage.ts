@@ -31,6 +31,10 @@ interface LegacyCatalogEntry {
   description?: unknown;
 }
 
+// Trusted in-process preparation callback, never populated from request JSON.
+// JSON callers run conversion and validation in their bounded worker before commit.
+export type PrepareDiagram = (xml: string) => Promise<{ xml: string; validation: ValidationResult }>;
+
 function folderId(): string {
   return `folder-${randomUUID()}`;
 }
@@ -192,12 +196,15 @@ export class DiagramStorage {
   }
 
   async getCatalog(): Promise<CatalogSnapshot> {
-    const catalog = await this.readCatalog();
-    const diagrams = await Promise.all(catalog.diagrams.map(entry => this.summaryFor(entry, catalog.folders)));
-    return { ...this.folderListFor(catalog), diagrams: diagrams.sort((a, b) => a.name.localeCompare(b.name, 'ru')) };
+    return this.withLock(async () => {
+      const catalog = await this.readCatalog();
+      const diagrams = await Promise.all(catalog.diagrams.map(entry => this.summaryFor(entry, catalog.folders)));
+      return { ...this.folderListFor(catalog), diagrams: diagrams.sort((a, b) => a.name.localeCompare(b.name, 'ru')) };
+    });
   }
 
   async list(query = '', selectedFolderId = '', includeDescendants = true): Promise<DiagramSummary[]> {
+    return this.withLock(async () => {
     const catalog = await this.readCatalog();
     if (selectedFolderId && !catalog.folders.some(folder => folder.id === selectedFolderId)) {
       throw new AppError(404, 'FOLDER_NOT_FOUND', `Folder ${selectedFolderId} was not found`);
@@ -216,18 +223,21 @@ export class DiagramStorage {
         .toLocaleLowerCase('ru')
         .includes(normalizedQuery);
     }).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    });
   }
 
   async listFolders(): Promise<FolderList> {
-    return this.folderListFor(await this.readCatalog());
+    return this.withLock(async () => this.folderListFor(await this.readCatalog()));
   }
 
   async get(id: string): Promise<DiagramRecord> {
-    this.assertId(id);
-    const catalog = await this.readCatalog();
-    const entry = catalog.diagrams.find(diagram => diagram.id === id);
-    if (!entry) throw new AppError(404, 'DIAGRAM_NOT_FOUND', `Diagram ${id} was not found`);
-    return this.recordFor(entry, catalog.folders);
+    return this.withLock(async () => {
+      this.assertId(id);
+      const catalog = await this.readCatalog();
+      const entry = catalog.diagrams.find(diagram => diagram.id === id);
+      if (!entry) throw new AppError(404, 'DIAGRAM_NOT_FOUND', `Diagram ${id} was not found`);
+      return this.recordFor(entry, catalog.folders);
+    });
   }
 
   async inspect(id: string): Promise<DiagramInspectionRecord> {
@@ -241,15 +251,22 @@ export class DiagramStorage {
   }
 
   async create(input: DiagramCreateInput): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    return this.createPrepared(input, async xml => ({ xml, validation: await this.validate(xml) }));
+  }
+
+  async createPrepared(input: DiagramCreateInput, prepare: PrepareDiagram): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    input = { ...input };
+    this.assertId(input.id);
+    const prepared = await prepare(input.xml ?? createBlankBpmn(input.id, input.name));
+    const xml = prepared.xml;
+    const validation = structuredClone(prepared.validation);
+    this.assertPrepared(xml, validation);
     return this.withLock(async () => {
       const catalog = await this.readCatalog();
       const entry = normalizeEntry(input, catalog.folders);
       if (catalog.diagrams.some(diagram => diagram.id === entry.id)) {
         throw new AppError(409, 'DIAGRAM_EXISTS', `Diagram ${entry.id} already exists`);
       }
-      const xml = input.xml ?? createBlankBpmn(entry.id, entry.name);
-      const validation = await this.validate(xml);
-      this.assertValidForWrite(validation);
       await this.atomicWrite(this.diagramPath(entry.id), xml);
       try {
         await this.writeCatalog({ ...catalog, diagrams: [...catalog.diagrams, entry] });
@@ -262,6 +279,20 @@ export class DiagramStorage {
   }
 
   async update(id: string, input: DiagramUpdateInput): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    return this.updatePrepared(id, input, async xml => ({ xml, validation: await this.validate(xml) }));
+  }
+
+  async updatePrepared(id: string, input: DiagramUpdateInput, prepare: PrepareDiagram): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    input = { ...input };
+    if (!input.expectedRevision) throw new AppError(400, 'REVISION_REQUIRED', 'expectedRevision is required');
+    const snapshot = await this.get(id);
+    if (snapshot.revision !== input.expectedRevision) {
+      throw new AppError(409, 'REVISION_CONFLICT', 'Diagram was changed by another client', { currentRevision: snapshot.revision });
+    }
+    const prepared = await prepare(input.xml ?? snapshot.xml);
+    const xml = prepared.xml;
+    const validation = structuredClone(prepared.validation);
+    this.assertPrepared(xml, validation);
     return this.withLock(async () => {
       this.assertId(id);
       if (!input.expectedRevision) throw new AppError(400, 'REVISION_REQUIRED', 'expectedRevision is required');
@@ -279,17 +310,15 @@ export class DiagramStorage {
         folderId: input.folderId === undefined ? currentEntry.folderId : input.folderId,
         description: input.description === undefined ? currentEntry.description : input.description
       }, catalog.folders);
-      const xml = input.xml ?? current.xml;
-      const validation = await this.validate(xml);
-      this.assertValidForWrite(validation);
+      const xmlChanged = xml !== current.xml;
       const metadataChanged = canonicalMetadata(nextEntry) !== canonicalMetadata(currentEntry);
       const nextCatalog = { ...catalog, diagrams: [...catalog.diagrams] };
       nextCatalog.diagrams[index] = nextEntry;
-      if (input.xml !== undefined) await this.atomicWrite(this.diagramPath(id), xml);
+      if (xmlChanged) await this.atomicWrite(this.diagramPath(id), xml);
       try {
         if (metadataChanged) await this.writeCatalog(nextCatalog);
       } catch (error) {
-        if (input.xml !== undefined) await this.atomicWrite(this.diagramPath(id), current.xml).catch(() => undefined);
+        if (xmlChanged) await this.atomicWrite(this.diagramPath(id), current.xml).catch(() => undefined);
         throw error;
       }
       return { diagram: await this.recordFor(nextEntry, catalog.folders), validation };
@@ -297,6 +326,17 @@ export class DiagramStorage {
   }
 
   async duplicate(sourceId: string, input: DiagramCreateInput & { expectedRevision: string }): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    return this.duplicatePrepared(sourceId, input, async xml => ({ xml, validation: await this.validate(xml) }));
+  }
+
+  async duplicatePrepared(sourceId: string, input: DiagramCreateInput & { expectedRevision: string }, prepare: PrepareDiagram): Promise<{ diagram: DiagramRecord; validation: ValidationResult }> {
+    input = { ...input };
+    const snapshot = await this.get(sourceId);
+    if (snapshot.revision !== input.expectedRevision) throw new AppError(409, 'REVISION_CONFLICT', 'Diagram was changed by another client', { currentRevision: snapshot.revision });
+    const prepared = await prepare(snapshot.xml);
+    if (prepared.xml !== snapshot.xml) throw new AppError(500, 'INVALID_DUPLICATE_PREPARATION', 'Duplication must not modify the source XML');
+    const validation = structuredClone(prepared.validation);
+    this.assertPrepared(prepared.xml, validation);
     return this.withLock(async () => {
       this.assertId(sourceId);
       const catalog = await this.readCatalog();
@@ -314,8 +354,6 @@ export class DiagramStorage {
       if (catalog.diagrams.some(diagram => diagram.id === entry.id)) {
         throw new AppError(409, 'DIAGRAM_EXISTS', `Diagram ${entry.id} already exists`);
       }
-      const validation = await this.validate(source.xml);
-      this.assertValidForWrite(validation);
       await this.atomicWrite(this.diagramPath(entry.id), source.xml);
       try {
         await this.writeCatalog({ ...catalog, diagrams: [...catalog.diagrams, entry] });
@@ -499,6 +537,13 @@ export class DiagramStorage {
       tooLarge ? 'BPMN XML is too large' : 'BPMN validation failed',
       validation
     );
+  }
+
+  private assertPrepared(xml: string, validation: ValidationResult): void {
+    if (typeof xml !== 'string' || Buffer.byteLength(xml) > this.maxBpmnBytes) {
+      throw new AppError(413, 'PAYLOAD_TOO_LARGE', 'BPMN XML is too large');
+    }
+    this.assertValidForWrite(validation);
   }
 
   private assertCatalogRevision(catalog: CatalogFile, expectedRevision: string): void {

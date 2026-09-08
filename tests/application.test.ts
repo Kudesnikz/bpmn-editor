@@ -60,6 +60,7 @@ describe('BPMN application', () => {
     expect(() => loadConfig({ PUBLIC_BASE_URL: 'https://bpmn.example.test', WEB_USERNAME: 'admin' })).toThrow(/WEB_PASSWORD, MCP_API_KEY/);
     await request(app).get('/api/catalog').expect(401).expect('WWW-Authenticate', /Basic/);
     await request(app).get('/api/config').expect(401).expect('WWW-Authenticate', /Basic/);
+    await request(app).post('/mcp-json').send({}).expect(404).expect(({ body }) => expect(body.error.code).toBe('JSON_MCP_DISABLED'));
     await request(app).get('/api/catalog').auth(basic.user, basic.password).expect(200);
     await request(app).get('/api/config').auth(basic.user, basic.password).expect(200)
       .expect('Cache-Control', /private, no-store/)

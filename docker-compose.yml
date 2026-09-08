@@ -12,6 +12,7 @@ services:
       MCP_API_KEY: ${MCP_API_KEY:?Set MCP_API_KEY in .env}
       MCP_RATE_LIMIT_PER_MINUTE: ${MCP_RATE_LIMIT_PER_MINUTE:-60}
       MAX_BPMN_BYTES: ${MAX_BPMN_BYTES:-2097152}
+      ENABLE_JSON_MCP: ${ENABLE_JSON_MCP:-false}
     ports:
       - "127.0.0.1:${HOST_PORT:-3000}:3000"
     volumes:

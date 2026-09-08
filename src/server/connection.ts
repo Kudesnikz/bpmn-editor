@@ -1,16 +1,42 @@
+import { readFileSync } from 'node:fs';
+
 function tomlString(value: string): string {
   return JSON.stringify(value);
 }
 
-export function buildCodexConfig(mcpUrl: string, mcpApiKey: string): string {
+export function buildCodexConfig(mcpUrl: string, mcpApiKey: string, server: 'bpmn' | 'bpmn_json' = 'bpmn'): string {
   return [
-    '[mcp_servers.bpmn]',
+    `[mcp_servers.${server}]`,
     `url = ${tomlString(mcpUrl)}`,
     `http_headers = { Authorization = ${tomlString(`Bearer ${mcpApiKey}`)} }`,
     'default_tools_approval_mode = "writes"',
     'required = true'
   ].join('\n');
 }
+
+export const JSON_SKILL_MARKDOWN = readFileSync(new URL('../../skills/bpmn-json-modeler/SKILL.md', import.meta.url), 'utf8');
+export const JSON_SKILL_CREATOR_PROMPT = `$skill-creator
+
+Создай персональный instruction-only skill bpmn-json-modeler с автоматическим обнаружением для экспериментального MCP-сервера bpmn_json.
+Используй приведённый SKILL.md: он задаёт экономное чтение фрагментов, точечные операции, ревизии и сохранение ручного layout.
+Не добавляй scripts, references, assets или README. Не устанавливай и не изменяй MCP-подключения, токены или сервер; настройка подключения выполняется отдельно.
+
+${JSON_SKILL_MARKDOWN}`;
+
+export const CONNECTION_TOOLS = [
+  ['list_diagrams', 'Каталог, поиск и ревизии'],
+  ['list_folders', 'Дерево папок, ID и ревизия каталога'],
+  ['get_diagram', 'XML, метаданные и ревизия'],
+  ['inspect_diagram', 'Структура и качество без XML'],
+  ['validate_bpmn', 'Проверка без сохранения'],
+  ['create_diagram', 'Создание полной модели'],
+  ['update_diagram', 'Изменение по актуальной ревизии'],
+  ['duplicate_diagram', 'Безопасное создание копии'],
+  ['create_folder', 'Создание корневой или вложенной папки'],
+  ['update_folder', 'Переименование и перенос папки']
+].map(([name, description]) => ({ name, description }));
+
+export const JSON_CONNECTION_TOOLS = CONNECTION_TOOLS.map(tool => ({ ...tool, description: tool.name === 'get_diagram' ? 'JSON: обзор, семантика, фрагмент или полная модель' : tool.name === 'update_diagram' ? 'Атомарный пакет операций, полная замена или метаданные' : tool.name === 'validate_bpmn' ? 'Проверка JSON или операций без записи' : tool.description })).concat([{ name: 'describe_bpmn_types', description: 'Свойства и ссылки нужных BPMN-типов' }]);
 
 export const BPMN_SKILL_MARKDOWN = [
   '---',

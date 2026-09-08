@@ -8,7 +8,7 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const storage = new DiagramStorage(config.dataDir, config.seedDir, config.publicBaseUrl, config.maxBpmnBytes);
   await storage.initialize();
-  const { app, mcpHandler } = await createApplication({ config, storage });
+  const { app, close } = await createApplication({ config, storage });
   const server = createServer(app);
 
   server.listen(config.port, '0.0.0.0', () => {
@@ -24,7 +24,7 @@ async function main(): Promise<void> {
     logEvent('server_stopping', { signal });
     server.close(async error => {
       if (error) logError('server_close_failed', error);
-      await mcpHandler.close().catch(closeError => logError('mcp_close_failed', closeError));
+      await close().catch(closeError => logError('mcp_close_failed', closeError));
       process.exit(error ? 1 : 0);
     });
     setTimeout(() => process.exit(1), 10_000).unref();

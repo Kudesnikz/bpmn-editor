@@ -12,6 +12,7 @@ export interface AppConfig {
   mcpRateLimitPerMinute: number;
   maxBpmnBytes: number;
   nodeEnv: string;
+  enableJsonMcp?: boolean;
 }
 
 function positiveInteger(value: string | undefined, fallback: number, name: string): number {
@@ -27,6 +28,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const webUsername = env.WEB_USERNAME?.trim();
   const webPassword = env.WEB_PASSWORD;
   const mcpApiKey = env.MCP_API_KEY;
+  if (env.ENABLE_JSON_MCP !== undefined && !['true', 'false'].includes(env.ENABLE_JSON_MCP)) throw new Error('ENABLE_JSON_MCP must be true or false');
 
   const missing = [
     ['PUBLIC_BASE_URL', publicBaseUrl],
@@ -60,6 +62,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     mcpApiKey: mcpApiKey!,
     mcpRateLimitPerMinute: positiveInteger(env.MCP_RATE_LIMIT_PER_MINUTE, 60, 'MCP_RATE_LIMIT_PER_MINUTE'),
     maxBpmnBytes: positiveInteger(env.MAX_BPMN_BYTES, 2 * 1024 * 1024, 'MAX_BPMN_BYTES'),
-    nodeEnv: env.NODE_ENV || 'development'
+    nodeEnv: env.NODE_ENV || 'development',
+    enableJsonMcp: env.ENABLE_JSON_MCP === 'true'
   };
 }

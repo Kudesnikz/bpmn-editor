@@ -1,7 +1,7 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod/v4';
 import type { AppConfig } from './config.js';
-import { BPMN_SKILL_CREATOR_PROMPT, BPMN_SKILL_MARKDOWN, buildCodexConfig } from './connection.js';
+import { BPMN_SKILL_CREATOR_PROMPT, BPMN_SKILL_MARKDOWN, buildCodexConfig, CONNECTION_TOOLS, JSON_CONNECTION_TOOLS, JSON_SKILL_CREATOR_PROMPT, JSON_SKILL_MARKDOWN } from './connection.js';
 import { AppError } from './errors.js';
 import { logError, logEvent } from './logger.js';
 import type { DiagramStorage } from './storage.js';
@@ -81,7 +81,18 @@ export function createApiRouter(storage: DiagramStorage, config: AppConfig): Rou
       maxBpmnBytes: config.maxBpmnBytes,
       codexConfig: buildCodexConfig(mcpUrl, config.mcpApiKey),
       skillCreatorPrompt: BPMN_SKILL_CREATOR_PROMPT,
-      skillMarkdown: BPMN_SKILL_MARKDOWN
+      skillMarkdown: BPMN_SKILL_MARKDOWN,
+      tools: CONNECTION_TOOLS,
+      jsonMcp: {
+        enabled: Boolean(config.enableJsonMcp),
+        ...(config.enableJsonMcp ? {
+          mcpUrl: `${config.publicBaseUrl}/mcp-json`,
+          codexConfig: buildCodexConfig(`${config.publicBaseUrl}/mcp-json`, config.mcpApiKey, 'bpmn_json'),
+          tools: JSON_CONNECTION_TOOLS,
+          skillCreatorPrompt: JSON_SKILL_CREATOR_PROMPT,
+          skillMarkdown: JSON_SKILL_MARKDOWN
+        } : {})
+      }
     });
   });
 

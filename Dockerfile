@@ -28,6 +28,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 
 COPY --from=build --chown=bpmn:bpmn /app/dist ./dist
+COPY --chown=bpmn:bpmn skills ./skills
 COPY --chown=bpmn:bpmn diagrams/shop.bpmn diagrams/return.bpmn ./seed/
 
 USER bpmn

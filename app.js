@@ -550,13 +550,31 @@ async function copyText(value, successMessage) {
   catch { window.prompt('Скопируйте текст:', value); }
 }
 
-function openMcpDialog() {
+function renderMcpConnection() {
   if (serverConfig) {
-    $('mcp-url').textContent = serverConfig.mcpUrl;
-    $('mcp-codex-config').textContent = serverConfig.codexConfig;
-    $('mcp-skill-prompt').textContent = serverConfig.skillCreatorPrompt;
-    $('mcp-skill-markdown').textContent = serverConfig.skillMarkdown;
+    const json = $('mcp-format').value === 'json';
+    const enabled = Boolean(serverConfig.jsonMcp?.enabled);
+    const connection = json && enabled ? serverConfig.jsonMcp : serverConfig;
+    $('mcp-format').querySelector('option[value="json"]').disabled = !enabled;
+    if (json && !enabled) $('mcp-format').value = 'xml';
+    $('mcp-url').textContent = connection.mcpUrl;
+    $('mcp-codex-config').textContent = connection.codexConfig;
+    $('mcp-skill-prompt').textContent = connection.skillCreatorPrompt;
+    $('mcp-skill-markdown').textContent = connection.skillMarkdown;
+    $('mcp-description').textContent = json && enabled ? 'ИИ передаёт JSON и точечные операции. Сервер преобразует результат в BPMN XML.' : 'ИИ передаёт BPMN XML. Сервер проверяет модель и сохраняет в volume.';
+    $('mcp-experiment-note').hidden = enabled && !json;
+    $('mcp-experiment-note').textContent = !enabled ? 'Экспериментальный JSON MCP выключен. Администратор может включить ENABLE_JSON_MCP=true и перезапустить приложение.' : 'Экспериментальный интерфейс: сначала проверяйте изменения на копиях. Подключайте нужный вариант MCP, чтобы ИИ не путал одноимённые инструменты. Автоперестройка может изменить расположение элементов.';
+    $('mcp-tools').replaceChildren(...(connection.tools || []).map(tool => {
+      const item = document.createElement('div');
+      const name = document.createElement('code'); name.textContent = tool.name;
+      const description = document.createElement('span'); description.textContent = tool.description;
+      item.append(name, description); return item;
+    }));
   }
+}
+
+function openMcpDialog() {
+  renderMcpConnection();
   openDialog($('mcp-dialog'));
 }
 
@@ -589,7 +607,8 @@ function wireEvents() {
   $('delete-confirm-id').addEventListener('input', () => { $('delete-submit').disabled = $('delete-confirm-id').value !== currentDiagram?.id; });
   document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => closeDialog($(button.dataset.closeDialog))));
   for (const id of ['mcp-connect', 'empty-mcp']) $(id).addEventListener('click', openMcpDialog);
-  $('copy-mcp-url').addEventListener('click', () => void copyText(serverConfig?.mcpUrl || '', 'MCP URL скопирован.'));
+  $('mcp-format').addEventListener('change', renderMcpConnection);
+  $('copy-mcp-url').addEventListener('click', () => void copyText($('mcp-url').textContent, 'MCP URL скопирован.'));
   $('copy-codex-config').addEventListener('click', () => void copyText($('mcp-codex-config').textContent, 'Codex-конфигурация скопирована.'));
   $('copy-skill-prompt').addEventListener('click', () => void copyText($('mcp-skill-prompt').textContent, 'Промпт для Skill Creator скопирован.'));
   $('copy-skill-markdown').addEventListener('click', () => void copyText($('mcp-skill-markdown').textContent, 'SKILL.md скопирован.'));

@@ -120,9 +120,11 @@
   <dialog id="mcp-dialog" class="app-dialog mcp-dialog">
     <div class="dialog-form">
       <div class="dialog-heading">
-        <div><span class="dialog-kicker ai-text">MCP · Streamable HTTP</span><h2>Подключить нейросеть</h2><p>Нейросеть создаёт BPMN XML, сервер проверяет его и сохраняет в volume.</p></div>
+        <div><span class="dialog-kicker ai-text">MCP · Streamable HTTP</span><h2>Подключить нейросеть</h2><p id="mcp-description">Выберите формат работы ИИ. В редакторе и на диске остаётся BPMN XML.</p></div>
         <button class="icon-button dialog-close" type="button" data-close-dialog="mcp-dialog" aria-label="Закрыть">×</button>
       </div>
+      <label class="field"><span>Формат подключения</span><select id="mcp-format"><option value="xml">XML MCP — существующий</option><option value="json">JSON MCP — экспериментальный</option></select></label>
+      <p id="mcp-experiment-note" class="warning-note" hidden></p>
       <section class="connection-section">
         <div class="section-heading"><div><span class="step-number">1</span><strong>Endpoint</strong></div><button id="copy-mcp-url" class="small-button" type="button">Копировать</button></div>
         <div class="copy-field"><code id="mcp-url">Загрузка…</code></div>
@@ -135,7 +137,7 @@
       </section>
       <section class="connection-section tools-section">
         <div class="section-heading"><div><span class="step-number">3</span><strong>Доступные инструменты</strong></div></div>
-        <div class="tool-grid">
+        <div id="mcp-tools" class="tool-grid">
           <div><code>list_diagrams</code><span>Каталог, поиск и ревизии</span></div>
           <div><code>list_folders</code><span>Дерево папок, ID и ревизия каталога</span></div>
           <div><code>get_diagram</code><span>XML, метаданные и ревизия</span></div>

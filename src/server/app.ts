@@ -12,6 +12,9 @@ import { isAppError } from './errors.js';
 import { logError } from './logger.js';
 import { createBpmnMcpHandler } from './mcp.js';
 import type { DiagramStorage } from './storage.js';
+import { createJsonMcpHandler } from './json-bpmn/mcp.js';
+import { JsonBpmnService } from './json-bpmn/service.js';
+import { JsonWorkerPool } from './json-bpmn/worker-pool.js';
 
 export interface ApplicationOptions {
   config: AppConfig;
@@ -64,6 +67,15 @@ export async function createApplication({ config, storage, serveFrontend = true 
     }
   );
 
+  const jsonPool = config.enableJsonMcp ? new JsonWorkerPool() : undefined;
+  const jsonMcpHandler = jsonPool ? createJsonMcpHandler(new JsonBpmnService(storage, jsonPool, config.maxBpmnBytes)) : undefined;
+  if (jsonMcpHandler) {
+    const jsonNodeHandler = toNodeHandler(jsonMcpHandler, { onerror: () => logError('mcp_json_adapter_error', new Error('JSON MCP adapter failed')) });
+    app.all('/mcp-json', mcpLimiter, bearerAuth(config.mcpApiKey), validateMcpOrigin(config.publicOrigin), express.json({ limit: 4 * 1024 * 1024 + 64 * 1024 }), (req, res, next) => { void jsonNodeHandler(req, res, req.body).catch(next); });
+  } else {
+    app.all('/mcp-json', (_req, res) => res.status(404).json({ error: { code: 'JSON_MCP_DISABLED', message: 'Experimental JSON MCP is disabled' } }));
+  }
+
   const webAuth = basicAuth(config.webUsername, config.webPassword);
   app.use(
     '/api',
@@ -109,5 +121,6 @@ export async function createApplication({ config, storage, serveFrontend = true 
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } });
   });
 
-  return { app, mcpHandler };
+  const close = async () => { await jsonPool?.close(); await Promise.all([mcpHandler.close(), jsonMcpHandler?.close()]); };
+  return { app, mcpHandler, jsonMcpHandler, close };
 }

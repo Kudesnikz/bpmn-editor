@@ -1,5 +1,6 @@
 import BpmnModdle from 'bpmn-moddle';
 import type { ValidationIssue, ValidationResult } from './types.js';
+import { BPMN_NS, parseXml, walkXml } from './json-bpmn/xml.js';
 
 const VISIBLE_SHAPE_TYPES = [
   /Event$/,
@@ -14,8 +15,8 @@ function issue(code: string, message: string, elementId?: string): ValidationIss
 }
 
 interface Point { x: number; y: number }
-interface ShapeGeometry { id: string; type: string; x: number; y: number; width: number; height: number }
-interface EdgeGeometry { id: string; points: Point[]; endpoints: Set<string> }
+interface ShapeGeometry { id: string; type: string; plane: object; x: number; y: number; width: number; height: number }
+interface EdgeGeometry { id: string; plane: object; points: Point[]; endpoints: Set<string> }
 
 function isFinitePoint(value: any): value is Point {
   return Number.isFinite(value?.x) && Number.isFinite(value?.y);
@@ -50,23 +51,22 @@ function isType(element: any, type: string): boolean {
 
 function collectFlowElements(container: any): any[] {
   const result: any[] = [];
-  for (const element of container?.flowElements || []) {
+  const pending = [...(container?.flowElements || [])];
+  while (pending.length) {
+    const element = pending.pop();
     result.push(element);
-    if (element?.flowElements) result.push(...collectFlowElements(element));
+    if (element?.flowElements) pending.push(...element.flowElements);
   }
   return result;
 }
 
 function collectLanes(process: any): any[] {
   const lanes: any[] = [];
-  const visit = (lane: any) => {
+  const pending = (process?.laneSets || []).flatMap((set: any) => set.lanes || []);
+  while (pending.length) {
+    const lane = pending.pop();
     lanes.push(lane);
-    for (const childSet of lane?.childLaneSet ? [lane.childLaneSet] : []) {
-      for (const child of childSet?.lanes || []) visit(child);
-    }
-  };
-  for (const laneSet of process?.laneSets || []) {
-    for (const lane of laneSet?.lanes || []) visit(lane);
+    pending.push(...(lane?.childLaneSet?.lanes || []));
   }
   return lanes;
 }
@@ -82,16 +82,17 @@ function rootProcess(element: any): any | null {
 
 function visibleShape(element: any): boolean {
   const type = String(element?.$type || '');
-  return VISIBLE_SHAPE_TYPES.some(pattern => pattern.test(type));
+  return VISIBLE_SHAPE_TYPES.some(pattern => pattern.test(type)) || Boolean(element?.$instanceOf?.('bpmn:Activity'))
+    || ['bpmn:DataObjectReference', 'bpmn:DataStoreReference', 'bpmn:TextAnnotation', 'bpmn:Group'].includes(type);
 }
 
-function extractXmlIds(xml: string): string[] {
-  const ids: string[] = [];
-  const idPattern = /\bid\s*=\s*(["'])(.*?)\1/g;
-  for (const match of xml.matchAll(idPattern)) {
-    if (match[2]) ids.push(match[2]);
+function flowScope(element: any): any | null {
+  let current = element?.$parent;
+  while (current) {
+    if (isType(current, 'bpmn:Process') || current.$instanceOf?.('bpmn:SubProcess')) return current;
+    current = current.$parent;
   }
-  return ids;
+  return null;
 }
 
 export async function validateBpmn(xml: string, maxBytes: number): Promise<ValidationResult> {
@@ -111,7 +112,16 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
   }
 
   const idCounts = new Map<string, number>();
-  for (const id of extractXmlIds(xml)) idCounts.set(id, (idCounts.get(id) || 0) + 1);
+  try {
+    const tree = parseXml(xml);
+    walkXml(tree, node => {
+      if (![BPMN_NS, 'http://www.omg.org/spec/BPMN/20100524/DI', 'http://www.omg.org/spec/DD/20100524/DC', 'http://www.omg.org/spec/DD/20100524/DI'].includes(node.name.uri)) return;
+      const id = node.attributes.find(attribute => !attribute.uri && attribute.local === 'id')?.value;
+      if (id) idCounts.set(id, (idCounts.get(id) || 0) + 1);
+    });
+  } catch {
+    return { valid: false, errors: [issue('INVALID_XML', 'XML syntax or processing limits are invalid')], warnings };
+  }
   for (const [id, count] of idCounts) {
     if (count > 1) errors.push(issue('DUPLICATE_ID', `Duplicate BPMN id: ${id}`, id));
   }
@@ -128,8 +138,7 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
       target.push(issue(brokenReference ? 'BROKEN_REFERENCE' : brokenStructure ? 'INVALID_BPMN_STRUCTURE' : 'MODDLE_WARNING', message));
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    errors.push(issue('INVALID_XML', `Unable to parse BPMN XML: ${message}`));
+    errors.push(issue('INVALID_XML', 'Unable to parse BPMN XML'));
     return { valid: false, errors, warnings };
   }
 
@@ -162,8 +171,8 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
     }
     if (!plane.bpmnElement) {
       errors.push(issue('BROKEN_PLANE_REFERENCE', 'BPMNPlane must reference a process or collaboration', plane?.id));
-    } else if (!['bpmn:Process', 'bpmn:Collaboration'].includes(String(plane.bpmnElement.$type))) {
-      errors.push(issue('INVALID_PLANE_REFERENCE', 'BPMNPlane must reference a process or collaboration', plane?.id));
+    } else if (!['bpmn:Process', 'bpmn:Collaboration'].includes(String(plane.bpmnElement.$type)) && !plane.bpmnElement.$instanceOf?.('bpmn:SubProcess')) {
+      errors.push(issue('INVALID_PLANE_REFERENCE', 'BPMNPlane must reference a process, collaboration or subprocess', plane?.id));
     }
     for (const diElement of plane.planeElement || []) {
       const bpmnId = diElement?.bpmnElement?.id;
@@ -177,7 +186,7 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
         if (!Number.isFinite(bounds?.x) || !Number.isFinite(bounds?.y) || !Number.isFinite(bounds?.width) || !Number.isFinite(bounds?.height) || bounds.width <= 0 || bounds.height <= 0) {
           errors.push(issue('INVALID_DI_BOUNDS', `BPMNShape for ${bpmnId} needs finite, positive bounds`, bpmnId));
         } else {
-          shapeGeometries.push({ id: bpmnId, type: String(diElement.bpmnElement.$type), x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+          shapeGeometries.push({ id: bpmnId, plane, type: String(diElement.bpmnElement.$type), x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
         }
       }
       if (isType(diElement, 'bpmndi:BPMNEdge')) {
@@ -187,7 +196,8 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
           errors.push(issue('INVALID_DI_WAYPOINT', `BPMNEdge for ${bpmnId} contains an invalid waypoint`, bpmnId));
         } else {
           const endpoints = new Set<string>([diElement.bpmnElement?.sourceRef?.id, diElement.bpmnElement?.targetRef?.id].filter(Boolean));
-          edgeGeometries.push({ id: bpmnId, points, endpoints });
+          edgeGeometries.push({ id: bpmnId, plane, points, endpoints });
+          if (points.length < 2) errors.push(issue('MISSING_DI_EDGE', `Edge ${bpmnId} needs at least two waypoints`, bpmnId));
           if (points.some((point, index) => index > 0 && pointsEqual(points[index - 1]!, point))) {
             warnings.push(issue('DEGENERATE_EDGE', `BPMNEdge for ${bpmnId} contains repeated waypoints`, bpmnId));
           }
@@ -202,41 +212,45 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
   for (const participant of participants) {
     if (participant.processRef?.id) participantForProcess.set(participant.processRef.id, participant);
     if (!participant.name?.trim()) warnings.push(issue('MISSING_NAME', `Participant ${participant.id} has no name`, participant.id));
-    if (!shapeIds.has(participant.id)) {
-      errors.push(issue('MISSING_DI_SHAPE', `Participant ${participant.id} has no BPMNShape`, participant.id));
-    }
   }
 
   for (const process of processes) {
     if (!process.name?.trim()) warnings.push(issue('MISSING_NAME', `Process ${process.id} has no name`, process.id));
     const flowElements = collectFlowElements(process);
-    for (const lane of collectLanes(process)) {
+    for (const container of [process, ...flowElements.filter(element => element.$instanceOf?.('bpmn:SubProcess'))]) {
+    for (const lane of collectLanes(container)) {
       if (!lane.name?.trim()) warnings.push(issue('MISSING_NAME', `Lane ${lane.id} has no name`, lane.id));
-      if (!shapeIds.has(lane.id)) errors.push(issue('MISSING_DI_SHAPE', `Lane ${lane.id} has no BPMNShape`, lane.id));
+      for (const node of lane.flowNodeRef || []) if (!node.$instanceOf?.('bpmn:FlowNode') || flowScope(node) !== container) {
+        errors.push(issue('INVALID_LANE_MEMBER', `Lane ${lane.id} references a node outside its flow scope`, lane.id));
+      }
+    }
     }
 
     for (const element of flowElements) {
-      if (visibleShape(element) && !shapeIds.has(element.id)) {
-        errors.push(issue('MISSING_DI_SHAPE', `${element.$type} ${element.id} has no BPMNShape`, element.id));
+      if (isType(element, 'bpmn:BoundaryEvent')) {
+        const host = element.attachedToRef;
+        if (!host?.$instanceOf?.('bpmn:Activity') || flowScope(host) !== flowScope(element)) errors.push(issue('INVALID_BOUNDARY_HOST', `Boundary event ${element.id} needs an activity in its own scope`, element.id));
+        if ((element.incoming || []).length || flowElements.some(flow => isType(flow, 'bpmn:SequenceFlow') && flow.targetRef === element)) errors.push(issue('INVALID_BOUNDARY_INCOMING', `Boundary event ${element.id} cannot have incoming sequence flow`, element.id));
       }
       if ((/Task$/.test(element?.$type || '') || /Gateway$/.test(element?.$type || '')) && !element.name?.trim()) {
         warnings.push(issue('MISSING_NAME', `${element.$type} ${element.id} has no name`, element.id));
       }
       if (isType(element, 'bpmn:SequenceFlow')) {
-        const waypointCount = edgeIds.get(element.id) || 0;
-        if (waypointCount < 2) {
-          errors.push(issue('MISSING_DI_EDGE', `SequenceFlow ${element.id} needs a BPMNEdge with at least two waypoints`, element.id));
-        }
         if (!element.sourceRef || !element.targetRef) {
           errors.push(issue('BROKEN_FLOW_REFERENCE', `SequenceFlow ${element.id} needs sourceRef and targetRef`, element.id));
         } else if (rootProcess(element.sourceRef)?.id !== rootProcess(element.targetRef)?.id) {
           errors.push(issue('SEQUENCE_FLOW_ACROSS_POOLS', `SequenceFlow ${element.id} crosses process boundaries`, element.id));
+        } else if (flowScope(element) !== flowScope(element.sourceRef) || flowScope(element) !== flowScope(element.targetRef)) {
+          errors.push(issue('SEQUENCE_FLOW_ACROSS_SCOPES', `SequenceFlow ${element.id} crosses a subprocess boundary`, element.id));
+        } else if (!element.sourceRef.$instanceOf?.('bpmn:FlowNode') || !element.targetRef.$instanceOf?.('bpmn:FlowNode')) {
+          errors.push(issue('BROKEN_FLOW_REFERENCE', `SequenceFlow ${element.id} endpoints must be flow nodes`, element.id));
         }
       }
     }
   }
 
   for (const collaboration of collaborations) {
+    const localParticipants: any[] = collaboration.participants || [];
     for (const messageFlow of collaboration.messageFlows || []) {
       const waypointCount = edgeIds.get(messageFlow.id) || 0;
       if (waypointCount < 2) {
@@ -247,9 +261,9 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
         continue;
       }
       const participantFor = (endpoint: any) => {
-        if (isType(endpoint, 'bpmn:Participant')) return endpoint;
+        if (isType(endpoint, 'bpmn:Participant')) return localParticipants.includes(endpoint) ? endpoint : undefined;
         const process = rootProcess(endpoint);
-        return process?.id ? participantForProcess.get(process.id) : undefined;
+        return process ? localParticipants.find(participant => participant.processRef === process) : undefined;
       };
       const sourceParticipant = participantFor(messageFlow.sourceRef);
       const targetParticipant = participantFor(messageFlow.targetRef);
@@ -258,6 +272,47 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
       }
     }
   }
+
+  // A shape in another plane cannot satisfy this plane's requirements. Collapsed
+  // subprocess internals are intentionally absent unless opened in a separate plane.
+  const covered = new Set<any>();
+  for (const diagram of diagrams) {
+    const plane = diagram.plane;
+    if (!plane?.bpmnElement) continue;
+    const shapes = new Map<any, any>();
+    const edges = new Map<any, any>();
+    for (const item of plane.planeElement || []) {
+      const map = isType(item, 'bpmndi:BPMNShape') ? shapes : edges;
+      if (map.has(item.bpmnElement)) errors.push(issue('DUPLICATE_DI_ELEMENT', 'Element has multiple representations in one plane', item.bpmnElement?.id));
+      map.set(item.bpmnElement, item);
+    }
+    const requireShape = (element: any) => {
+      if (!shapes.has(element)) errors.push(issue('MISSING_DI_SHAPE', `Element ${element.id} needs a shape in plane ${plane.id || diagram.id}`, element.id));
+    };
+    const requireEdge = (element: any) => {
+      if ((edges.get(element)?.waypoint?.length || 0) < 2) errors.push(issue('MISSING_DI_EDGE', `Flow ${element.id} needs an edge in plane ${plane.id || diagram.id}`, element.id));
+    };
+    const root = plane.bpmnElement;
+    covered.add(root);
+    const containers: any[] = [];
+    if (isType(root, 'bpmn:Collaboration')) {
+      for (const participant of root.participants || []) {
+        requireShape(participant);
+        if (participant.processRef) { containers.push(participant.processRef); covered.add(participant.processRef); }
+      }
+      for (const flow of root.messageFlows || []) requireEdge(flow);
+    } else containers.push(root);
+    while (containers.length) {
+      const container = containers.pop();
+      for (const lane of collectLanes(container)) requireShape(lane);
+      for (const element of [...(container.flowElements || []), ...(container.artifacts || [])]) {
+        if (visibleShape(element)) requireShape(element);
+        if (isType(element, 'bpmn:SequenceFlow') || isType(element, 'bpmn:Association')) requireEdge(element);
+        if (element.$instanceOf?.('bpmn:SubProcess') && shapes.get(element)?.isExpanded === true) containers.push(element);
+      }
+    }
+  }
+  for (const root of [...processes, ...collaborations]) if (!covered.has(root)) errors.push(issue('MISSING_DI_PLANE', `Root ${root.id} is not represented by any BPMN plane`, root.id));
 
   for (const participant of participants) {
     if (participant.processRef?.id && !processById.has(participant.processRef.id)) {
@@ -270,7 +325,7 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
     for (let rightIndex = leftIndex + 1; rightIndex < overlapCandidates.length; rightIndex += 1) {
       const left = overlapCandidates[leftIndex]!;
       const right = overlapCandidates[rightIndex]!;
-      if (shapesOverlap(left, right)) {
+      if (left.plane === right.plane && shapesOverlap(left, right)) {
         warnings.push(issue('OVERLAPPING_SHAPES', `Shapes ${left.id} and ${right.id} overlap`, left.id));
       }
     }
@@ -281,6 +336,7 @@ export async function validateBpmn(xml: string, maxBytes: number): Promise<Valid
     for (let rightIndex = leftIndex + 1; rightIndex < edgeGeometries.length && crossingWarnings < 50; rightIndex += 1) {
       const left = edgeGeometries[leftIndex]!;
       const right = edgeGeometries[rightIndex]!;
+      if (left.plane !== right.plane) continue;
       if ([...left.endpoints].some(endpoint => right.endpoints.has(endpoint))) continue;
       const crosses = left.points.slice(1).some((point, segmentIndex) =>
         right.points.slice(1).some((otherPoint, otherSegmentIndex) =>
